@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRYL Hat Collection - 3D Experience</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.1.1/model-viewer.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&family=Inter:wght@400;600&display=swap');
+        
+        :root {
+            --ry-green: #31d190;
+            --ry-bg: #FAFAFA;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--ry-bg);
+        }
+
+        h1, h2, h3, .font-montserrat {
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        /* Spicier Hover Effects */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #E5E7EB;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .glass-card:hover {
+            border-color: var(--ry-green);
+            box-shadow: 0 20px 40px -10px rgba(49, 209, 144, 0.15);
+            transform: translateY(-5px);
+        }
+
+        /* 3D Model Viewer adjustments */
+        model-viewer {
+            width: 100%;
+            height: 300px;
+            background-color: #F3F4F6;
+            --poster-color: transparent;
+        }
+
+        /* Animated Button */
+        .btn-spice {
+            background: #000;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-spice::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--ry-green);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 1;
+        }
+        
+        .btn-spice:hover::after {
+            transform: translateY(0);
+        }
+        
+        .btn-spice span {
+            position: relative;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-gray-900 pb-20">
+
+<section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16">
+    
+    <!-- Minimalist Header -->
+    <div class="flex flex-col md:flex-row justify-between items-end mb-12 border-b-4 pb-4" style="border-color: var(--ry-green);">
+        <div>
+            <h2 class="text-5xl font-extrabold tracking-tighter uppercase font-montserrat">
+                Signature Hats
+            </h2>
+            <p class="text-sm font-semibold text-gray-500 uppercase tracking-widest mt-2">
+                Drag to Rotate • 3D Interactive
+            </p>
+        </div>
+        <span class="text-sm font-bold text-gray-900 bg-gray-100 px-4 py-2 rounded-full mt-4 md:mt-0">
+            5 Exclusives
+        </span>
+    </div>
+
+    <!-- 3D Product Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+        
+        <!-- Product 1: Signature Chino -->
+        <div class="glass-card relative flex flex-col overflow-hidden group">
+            <div class="relative w-full cursor-grab active:cursor-grabbing">
+                <!-- Using Google's placeholder 3D astronaut/cap until you export Printful's .glb -->
+                <model-viewer 
+                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+                    ios-src="" 
+                    alt="The Righteous Yield Signature Chino" 
+                    shadow-intensity="1" 
+                    camera-controls 
+                    auto-rotate
+                    interaction-prompt="hover">
+                </model-viewer>
+                <!-- Badge -->
+                <div class="absolute top-4 left-4 bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest z-10">
+                    Chino
+                </div>
+            </div>
+            <div class="p-6 flex flex-col flex-1 bg-white">
+                <h3 class="text-lg font-bold uppercase tracking-tight font-montserrat">The Righteous Yield Signature Chino</h3>
+                <p class="mt-2 text-2xl font-black text-[#31d190]">$26.23</p>
+                <button class="btn-spice w-full mt-6 py-4 text-sm font-bold uppercase tracking-widest">
+                    <span>Add to Cart</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Product 2: Signature Snapback -->
+        <div class="glass-card relative flex flex-col overflow-hidden group">
+            <div class="relative w-full cursor-grab active:cursor-grabbing">
+                <model-viewer 
+                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+                    alt="Righteous Yield Signature Snapback" 
+                    shadow-intensity="1" 
+                    camera-controls 
+                    auto-rotate
+                    interaction-prompt="hover">
+                </model-viewer>
+                <div class="absolute top-4 left-4 bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest z-10">
+                    Snapback
+                </div>
+            </div>
+            <div class="p-6 flex flex-col flex-1 bg-white">
+                <h3 class="text-lg font-bold uppercase tracking-tight font-montserrat">Righteous Yield Signature Snapback</h3>
+                <p class="mt-2 text-2xl font-black text-[#31d190]">$23.50</p>
+                <button class="btn-spice w-full mt-6 py-4 text-sm font-bold uppercase tracking-widest">
+                    <span>Add to Cart</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Product 3: Signature Cap -->
+        <div class="glass-card relative flex flex-col overflow-hidden group">
+            <div class="relative w-full cursor-grab active:cursor-grabbing">
+                <model-viewer 
+                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+                    alt="Righteous Yield Signature Cap" 
+                    shadow-intensity="1" 
+                    camera-controls 
+                    auto-rotate
+                    interaction-prompt="hover">
+                </model-viewer>
+                <div class="absolute top-4 left-4 bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest z-10">
+                    Cap
+                </div>
+            </div>
+            <div class="p-6 flex flex-col flex-1 bg-white">
+                <h3 class="text-lg font-bold uppercase tracking-tight font-montserrat">Righteous Yield Signature Cap</h3>
+                <p class="mt-2 text-2xl font-black text-[#31d190]">$23.50</p>
+                <button class="btn-spice w-full mt-6 py-4 text-sm font-bold uppercase tracking-widest">
+                    <span>Add to Cart</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Product 4: Dad Hat -->
+        <div class="glass-card relative flex flex-col overflow-hidden group">
+            <div class="relative w-full cursor-grab active:cursor-grabbing">
+                <model-viewer 
+                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+                    alt="Dad Hat" 
+                    shadow-intensity="1" 
+                    camera-controls 
+                    auto-rotate
+                    interaction-prompt="hover">
+                </model-viewer>
+                <div class="absolute top-4 left-4 bg-black text-white text-xs font-bold px-3 py-1 uppercase tracking-widest z-10">
+                    Dad Hat
+                </div>
+            </div>
+            <div class="p-6 flex flex-col flex-1 bg-white">
+                <h3 class="text-lg font-bold uppercase tracking-tight font-montserrat">Dad Hat</h3>
+                <p class="mt-2 text-2xl font-black text-[#31d190]">$26.23</p>
+                <button class="btn-spice w-full mt-6 py-4 text-sm font-bold uppercase tracking-widest">
+                    <span>Add to Cart</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Product 5: Black Chino Pray Hat -->
+        <div class="glass-card relative flex flex-col overflow-hidden group lg:col-span-1 md:col-span-2 lg:col-start-2">
+            <div class="relative w-full cursor-grab active:cursor-grabbing">
+                <model-viewer 
+                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+                    alt="Black Chino Pray Hat" 
+                    shadow-intensity="1" 
+                    camera-controls 
+                    auto-rotate
+                    interaction-prompt="hover">
+                </model-viewer>
+                <div class="absolute top-4 left-4 bg-[#31d190] text-black text-xs font-bold px-3 py-1 uppercase tracking-widest z-10">
+                    Premium
+                </div>
+            </div>
+            <div class="p-6 flex flex-col flex-1 bg-white">
+                <h3 class="text-lg font-bold uppercase tracking-tight font-montserrat">Black Chino Pray Hat</h3>
+                <p class="mt-2 text-2xl font-black text-[#31d190]">$35.23</p>
+                <button class="btn-spice w-full mt-6 py-4 text-sm font-bold uppercase tracking-widest">
+                    <span>Add to Cart</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+</body>
+</html>

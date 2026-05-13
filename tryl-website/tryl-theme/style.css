@@ -1,0 +1,130 @@
+/*
+Theme Name: The Righteous Yield Life (TRYL)
+Theme URI: https://therighteousyieldlife.com
+Author: TRYL Developer
+Description: Custom high-end GSAP-animated theme.
+Version: 1.0.0
+Text Domain: tryl
+*/
+
+:root {
+    --vivid-blue: #004db4;
+    --righteous-red: #d62f31;
+    --yield-turquoise: #0e8b70;
+    --life-yellow: #fad02c;
+    --bg-color: #ffffff;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    overflow-x: hidden;
+}
+
+.hero-section {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+}
+
+.hero-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 1200px;
+}
+
+.hero-image-wrapper {
+    position: relative;
+    z-index: 2;
+    width: 450px;
+    height: 600px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-portrait {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: contrast(1.1) saturate(1.15);
+}
+
+.hero-text-left, .hero-text-right {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 5.5rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    line-height: 0.9;
+    letter-spacing: -2px;
+}
+
+.hero-text-left {
+    left: 2%;
+    text-align: right;
+    color: var(--righteous-red);
+    z-index: 1;
+}
+
+.hero-text-right {
+    right: 2%;
+    text-align: left;
+    z-index: 3;
+}
+
+.text-righteous {
+    display: inline-block;
+}
+
+.text-yield-life {
+    background: linear-gradient(to right, var(--vivid-blue), var(--yield-turquoise));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: inline-block;
+}
+
+@media (max-width: 1024px) {
+    .hero-text-left, .hero-text-right {
+        font-size: 4rem;
+    }
+    .hero-image-wrapper {
+        width: 350px;
+        height: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+    .hero-container {
+        flex-direction: column;
+    }
+    .hero-text-left, .hero-text-right {
+        position: relative;
+        top: auto;
+        transform: none;
+        left: auto;
+        right: auto;
+        text-align: center;
+        font-size: 3.5rem;
+        z-index: 3;
+    }
+    .hero-image-wrapper {
+        margin: 2rem 0;
+        width: 100%;
+        max-width: 350px;
+        height: auto;
+        aspect-ratio: 3/4;
+    }
+}
