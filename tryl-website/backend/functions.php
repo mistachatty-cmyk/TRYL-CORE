@@ -10,8 +10,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * 1. Register WooCommerce Categories for TRYL
- * Ensures Men, Women, Kids, and Hats/Accessories exist on setup.
+ * Registers core product categories for the TRYL store.
+ *
+ * Ensures that 'Men', 'Women', 'Kids', and 'Hats & Accessories' categories exist upon initialization.
+ *
+ * @return void
  */
 if ( ! function_exists( 'tryl_register_core_product_categories' ) ) {
 function tryl_register_core_product_categories() {
@@ -36,8 +39,12 @@ if ( ! has_action( 'init', 'tryl_register_core_product_categories' ) ) {
 }
 
 /**
- * 2. Handle Prayer Request Form Submission
- * Custom route and email handler for the Prayer Request functionality.
+ * Handles the submission of the Prayer Request form.
+ *
+ * Verifies the nonce, sanitizes input, sends notification emails,
+ * and saves the request as a 'prayer_request' custom post type.
+ *
+ * @return void
  */
 if ( ! function_exists( 'tryl_handle_prayer_request_submission' ) ) {
 function tryl_handle_prayer_request_submission() {
@@ -104,12 +111,20 @@ function tryl_handle_prayer_request_submission() {
     }
 }
 } // endif function_exists( 'tryl_handle_prayer_request_submission' )
+remove_action( 'admin_post_nopriv_submit_prayer_request', 'tryl_handle_prayer_request_submission' );
+remove_action( 'admin_post_submit_prayer_request', 'tryl_handle_prayer_request_submission' );
 add_action( 'admin_post_nopriv_submit_prayer_request', 'tryl_handle_prayer_request_submission' );
 add_action( 'admin_post_submit_prayer_request', 'tryl_handle_prayer_request_submission' );
 
 /**
- * 2.1 Register Prayer Request Dashboard System
+ * Registers the 'prayer_request' Custom Post Type.
+ *
+ * Sets up a private CPT accessible via the admin dashboard for managing
+ * user-submitted prayer requests.
+ *
+ * @return void
  */
+if ( ! function_exists( 'tryl_register_prayer_cpt' ) ) {
 function tryl_register_prayer_cpt() {
     register_post_type('prayer_request', [
         'labels' => [
@@ -127,21 +142,37 @@ function tryl_register_prayer_cpt() {
         'map_meta_cap' => true,
     ]);
 }
+}
 add_action('init', 'tryl_register_prayer_cpt');
 
 /**
- * 2.2 Custom Prayer Details & Reply UI
+ * Adds the 'Prayer Details & Response' meta box to the prayer request edit screen.
+ *
+ * @return void
  */
+if ( ! function_exists( 'tryl_prayer_meta_box' ) ) {
 function tryl_prayer_meta_box() {
     add_meta_box('tryl_prayer_details', 'Prayer Details & Response', 'tryl_prayer_meta_box_html', 'prayer_request', 'normal', 'high');
 }
+}
 add_action('add_meta_boxes', 'tryl_prayer_meta_box');
 
+if ( ! function_exists( 'tryl_prayer_meta_box_html' ) ) {
+/**
+ * Renders the HTML for the 'Prayer Details & Response' meta box.
+ *
+ * Displays the requester's details, their prayer, and provides a form
+ * for admins to send a reply via email.
+ *
+ * @param WP_Post $post The current post object.
+ * @return void
+ */
 function tryl_prayer_meta_box_html($post) {
     $name   = get_post_meta($post->ID, '_prayer_name', true);
     $email  = get_post_meta($post->ID, '_prayer_email', true);
     $status = get_post_meta($post->ID, '_prayer_status', true);
     $reply  = get_post_meta($post->ID, '_prayer_reply', true);
+    $is_public = get_post_meta($post->ID, '_prayer_public', true);
     
     wp_nonce_field('tryl_save_prayer_reply', 'tryl_prayer_reply_nonce');
 
@@ -151,17 +182,36 @@ function tryl_prayer_meta_box_html($post) {
 
     if ( empty($email) ) {
         echo '<p style="color:#d63638;"><em>The user did not provide an email address, so you cannot reply directly from here.</em></p>';
+        echo '<hr style="margin: 20px 0; border: 0; border-top: 1px solid #c3c4c7;" />';
+        echo '<p><label><input type="checkbox" name="prayer_public" value="yes" ' . checked($is_public, 'yes', false) . ' /> <strong>Approve for Public Prayer Wall (Anonymous)</strong></label></p>';
+        echo '<p><button type="submit" class="button button-secondary">Save Settings</button></p>';
     } elseif ( $status === 'replied' ) {
         echo '<p style="color: #007017;"><strong>&check; You replied to this request:</strong></p>';
         echo '<div style="background:#fff; border:1px solid #c3c4c7; padding:15px;"><em>' . nl2br(esc_html($reply)) . '</em></div>';
+        echo '<hr style="margin: 20px 0; border: 0; border-top: 1px solid #c3c4c7;" />';
+        echo '<p><label><input type="checkbox" name="prayer_public" value="yes" ' . checked($is_public, 'yes', false) . ' /> <strong>Approve for Public Prayer Wall (Anonymous)</strong></label></p>';
+        echo '<p><button type="submit" class="button button-secondary">Save Settings</button></p>';
     } else {
         echo '<p><strong>Write a Response (This will be emailed directly to them):</strong></p>';
         echo '<textarea name="prayer_reply_message" rows="5" style="width:100%; border:1px solid #8c8f94; border-radius:4px; padding:10px;"></textarea>';
+        echo '<hr style="margin: 20px 0; border: 0; border-top: 1px solid #c3c4c7;" />';
+        echo '<p><label><input type="checkbox" name="prayer_public" value="yes" ' . checked($is_public, 'yes', false) . ' /> <strong>Approve for Public Prayer Wall (Anonymous)</strong></label></p>';
         echo '<p><button type="submit" class="button button-primary button-large" style="background:#0d1b0f; border-color:#0d1b0f;">Send Reply & Save</button></p>';
     }
     echo '</div>';
 }
+}
 
+if ( ! function_exists( 'tryl_save_prayer_reply' ) ) {
+/**
+ * Saves the data from the 'Prayer Details & Response' meta box.
+ *
+ * Handles sending the reply email to the requester and updating the
+ * prayer request's status and public visibility metadata.
+ *
+ * @param int $post_id The ID of the post being saved.
+ * @return void
+ */
 function tryl_save_prayer_reply($post_id) {
     if (!isset($_POST['tryl_prayer_reply_nonce']) || !wp_verify_nonce($_POST['tryl_prayer_reply_nonce'], 'tryl_save_prayer_reply')) return;
     if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
@@ -181,40 +231,72 @@ function tryl_save_prayer_reply($post_id) {
             update_post_meta($post_id, '_prayer_status', 'replied');
         }
     }
+
+    if (isset($_POST['prayer_public']) && $_POST['prayer_public'] === 'yes') {
+        update_post_meta($post_id, '_prayer_public', 'yes');
+    } else {
+        delete_post_meta($post_id, '_prayer_public');
+    }
+}
 }
 add_action('save_post_prayer_request', 'tryl_save_prayer_reply');
 
 /**
- * 2.3 Custom Columns for the Prayers List
+ * Configures custom columns for the prayer_request post type list table.
+ *
+ * @param array $columns Existing columns array.
+ * @return array Modified columns array.
  */
 add_filter('manage_prayer_request_posts_columns', function($columns) {
-    return ['cb' => $columns['cb'], 'title' => 'Requester', 'prayer_status' => 'Status', 'date' => 'Date Received'];
+    return ['cb' => $columns['cb'], 'title' => 'Requester', 'prayer_status' => 'Status', 'prayer_public' => 'Public Wall', 'date' => 'Date Received'];
 });
+
+/**
+ * Renders the content for custom columns in the prayer_request list table.
+ *
+ * @param string $column  The name of the column to display.
+ * @param int    $post_id The ID of the current post.
+ * @return void
+ */
 add_action('manage_prayer_request_posts_custom_column', function($column, $post_id) {
     if ($column === 'prayer_status') {
         $status = get_post_meta($post_id, '_prayer_status', true);
         echo $status === 'replied' ? '<span style="color:#007017; font-weight:bold;">&check; Replied</span>' : '<span style="color:#d63638; font-weight:bold;">Pending</span>';
     }
+    if ($column === 'prayer_public') {
+        $is_public = get_post_meta($post_id, '_prayer_public', true);
+        echo $is_public === 'yes' ? '<span style="color:#2d6a4f; font-weight:bold;">Yes</span>' : '<span style="color:#8c8f94;">No</span>';
+    }
 }, 10, 2);
 
 /**
- * 3. Printful & Payment Gateway Hooks (Scaffold)
- * Hooks to configure external integrations once authenticated.
+ * Registers the custom REST API route for Printful webhooks.
+ *
+ * Route: POST /wp-json/tryl/v1/printful-sync
+ *
+ * @return void
  */
-
-// Printful webhook integration placeholder
 if ( ! defined( 'TRYL_PRINTFUL_ROUTE_REGISTERED' ) ) {
     define( 'TRYL_PRINTFUL_ROUTE_REGISTERED', true );
-    add_action( 'rest_api_init', function () {
+    function tryl_register_printful_route() {
         register_rest_route( 'tryl/v1', '/printful-sync', array(
             'methods'  => 'POST',
             'callback' => 'tryl_handle_printful_sync',
             'permission_callback' => 'tryl_verify_printful_webhook'
         ) );
-    } );
+    }
+    add_action( 'rest_api_init', 'tryl_register_printful_route' );
 }
 
 if ( ! function_exists( 'tryl_verify_printful_webhook' ) ) {
+/**
+ * Verifies the authentication token for incoming Printful webhooks.
+ *
+ * Compares the 'token' query parameter against the stored setting.
+ *
+ * @param WP_REST_Request $request The incoming REST request.
+ * @return bool True if authorized, false otherwise.
+ */
 function tryl_verify_printful_webhook( WP_REST_Request $request ) {
     $token = $request->get_param('token');
     $stored_token = get_option('tryl_printful_token');
@@ -228,6 +310,15 @@ function tryl_verify_printful_webhook( WP_REST_Request $request ) {
 } // endif function_exists( 'tryl_verify_printful_webhook' )
 
 if ( ! function_exists( 'tryl_handle_printful_sync' ) ) {
+/**
+ * Processes incoming Printful webhook payloads.
+ *
+ * Handles 'package_shipped', 'package_returned', 'order_failed', and 'order_canceled'
+ * events to automatically update WooCommerce order statuses and metadata.
+ *
+ * @param WP_REST_Request $request The incoming REST request.
+ * @return WP_REST_Response|WP_Error Response object or Error if invalid.
+ */
 function tryl_handle_printful_sync( WP_REST_Request $request ) {
     $payload = $request->get_json_params();
 
@@ -271,9 +362,16 @@ function tryl_handle_printful_sync( WP_REST_Request $request ) {
 }
 } // endif function_exists( 'tryl_handle_printful_sync' )
 
-// Enforce required payment gateways in WooCommerce (Stripe, PayPal)
+/**
+ * Enforces required payment gateways in WooCommerce.
+ *
+ * @param array $gateways Array of available payment gateways.
+ * @return array Filtered array of payment gateways.
+ */
+if ( ! function_exists( 'tryl_ensure_payment_gateways' ) ) {
 function tryl_ensure_payment_gateways( $gateways ) {
     // In production, this can enforce specific gateways depending on env
     return $gateways;
+}
 }
 add_filter( 'woocommerce_available_payment_gateways', 'tryl_ensure_payment_gateways' );

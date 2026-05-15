@@ -2,8 +2,14 @@
 /**
  * LokServices Bridge — Remote deployment module.
  *
- * This module has been consolidated into tryl-ecommerce-core.php (Section 11).
- * See that file for the REST endpoint, auth, and deployment handler.
+ * The bridge has been upgraded and moved to a standalone mu-plugin:
+ *   wp-content/mu-plugins/lokservices-bridge.php
  *
- * @see tryl-ecommerce-core.php:1251-1320
+ * It is also available as a standalone plugin:
+ *   wp-content/plugins/lokservices-bridge/lokservices-bridge.php
+ *
+ * Features: auto-creates directories, validates file extensions,
+ * GET status endpoint, deploy manifest tracking.
+ *
+ * @see lokservices-bridge/lokservices-bridge.php
  */

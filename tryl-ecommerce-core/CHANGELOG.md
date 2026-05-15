@@ -1,6 +1,17 @@
-# Changelog
+C:\Users\glory\.gemini\antigravity\scratch\tryl-ecommerce-core\tryl-ecommerce-core.php# Changelog
 
 All notable changes to the TRYL E-Commerce Core plugin and associated templates will be documented in this file.
+
+## [3.3.0]
+
+### Added
+- Functional Checkout Switches: Hooked "Gift Wrapping" and "Eco-Packaging" toggles into the WooCommerce backend. Added a $5.00 Gift Wrapping fee via AJAX and saved user preferences to Order Meta.
+- Universal Reference & Guide: Added a dedicated documentation card to the TRYL Settings dashboard for quick access to shortcodes and feature logic.
+- Shortcode Alias: Added `[tryl_prayer_request]` as an alias for the prayer form shortcode.
+
+### Fixed
+- Shortcode Registration: Moved all shortcode registrations into the `init` hook to ensure compatibility across themes and page builders.
+
 
 ## [3.2.0]
 
@@ -17,7 +28,7 @@ All notable changes to the TRYL E-Commerce Core plugin and associated templates 
 - `tryl_should_load_mini_cart()` helper to restrict mini-cart assets to WooCommerce pages and specific shortcodes, keeping the rest of the site lightweight.
 
 ### Changed
-- Plugin Version bumped to `3.1`.
+- Plugin Version: 3.3
 - Righteous Shop Grid (`page-righteous-shop.php`): Modified "Buy Now" button logic to redirect directly to checkout with the item added, skipping the cart page. Variable products redirect to the single product options.
 - Improved Righteous Shop Grid accessibility by using standard anchor tags instead of inline JavaScript `onclick` handlers.
 - Righteous Shop Grid: Prioritize 3D mockup gallery image, with standard fallback to featured image or Woo placeholder.

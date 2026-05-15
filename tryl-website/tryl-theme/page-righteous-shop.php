@@ -124,7 +124,7 @@ $products = wc_get_products( $args );
                         </p>
                     </div>
                     <div class="mt-2 text-sm font-medium text-black">
-                        <?php echo $product_price; ?>
+                        <?php echo wp_kses_post($product_price); ?>
                     </div>
                 </div>
                 

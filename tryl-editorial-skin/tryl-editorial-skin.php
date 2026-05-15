@@ -9,6 +9,7 @@
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 // ─── EDITORIAL SHOP SHORTCODE ─────────────────────────────────────────────────
+if ( ! function_exists( 'tryl_editorial_shop_shortcode' ) ) {
 function tryl_editorial_shop_shortcode( $atts ) {
     if ( ! class_exists( 'WooCommerce' ) ) return '<p>WooCommerce required.</p>';
 
@@ -34,6 +35,11 @@ function tryl_editorial_shop_shortcode( $atts ) {
             foreach ( $terms as $t ) $cats[ $t->slug ] = $t->name;
         }
     }
+    $badges_active = get_option('tryl_badges_active');
+    $badges_new_days = (int) get_option('tryl_badges_new_days', 14);
+    $badges_bestseller_sales = (int) get_option('tryl_badges_bestseller_sales', 50);
+    $badges_bg = get_option('tryl_badges_bg', '#31d190');
+    $badges_text_color = get_option('tryl_badges_text_color', '#0d1b0f');
     ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -151,6 +157,10 @@ function tryl_editorial_shop_shortcode( $atts ) {
       font-size:.58rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;
       padding:5px 10px;border-radius:20px;
     }
+    <?php if ( $badges_active ) : ?>
+    .te-badge.dynamic-badge { background: <?php echo esc_attr($badges_bg); ?> !important; color: <?php echo esc_attr($badges_text_color); ?> !important; }
+    <?php endif; ?>
+    .te-badge.sold-out { background: #d63638 !important; color: #fff !important; }
 
     /* Quick-action overlay */
     .te-card-actions{
@@ -198,6 +208,7 @@ function tryl_editorial_shop_shortcode( $atts ) {
     .te-atc-choose:hover{background:var(--te-ink);color:var(--te-cream);border-color:var(--te-ink);}
     .te-atc.loading,.te-atc.disabled{opacity:.5;pointer-events:none;}
     .te-atc.added{background:var(--te-sage);}
+    .te-atc-variation:hover{background:var(--te-sage)!important;color:var(--te-cream)!important;}
     .te-card-arrow{
       width:34px;height:34px;border-radius:50%;
       border:1px solid var(--te-sand);background:transparent;
@@ -258,22 +269,60 @@ function tryl_editorial_shop_shortcode( $atts ) {
             $pid     = $product->get_id();
             $purl    = get_permalink( $pid );
             $is_var  = $product->is_type( 'variable' );
+            $is_in_stock = $product->is_in_stock();
             $buy_url = $is_var ? $purl : add_query_arg( 'add-to-cart', $pid, wc_get_checkout_url() );
             $btn_txt = $is_var ? 'Choose Size' : 'Buy Now';
+            
+            if ( ! $is_in_stock ) {
+                $btn_txt = 'Sold Out';
+                $buy_url = $purl;
+            }
+            
             $img     = wp_get_attachment_image_url( $product->get_image_id(), 'large' )
                     ?: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=600';
             $cat_terms = wp_get_post_terms( $pid, 'product_cat' );
             $cat_label = ! is_wp_error($cat_terms) && ! empty($cat_terms) ? $cat_terms[0]->name : '';
-            $cat_slugs = ! is_wp_error($cat_terms) ? array_map(fn($t)=>$t->slug, $cat_terms) : [];
+            $cat_slugs = ! is_wp_error($cat_terms) ? array_map(function($t) { return $t->slug; }, $cat_terms) : [];
             $cat_cls   = ! empty($cat_slugs) ? 'cat-'.implode(' cat-',$cat_slugs) : '';
             $on_sale   = $product->is_on_sale();
+            
+            $badge_text = '';
+            $is_dynamic_badge = false;
+            $badge_class = 'te-badge';
+
+            if ( ! $is_in_stock ) {
+                $badge_text = 'Sold Out';
+                $badge_class .= ' sold-out';
+            } else {
+                if ( $badges_active ) {
+                    $total_sales = (int) get_post_meta( $pid, 'total_sales', true );
+                    $created_date = $product->get_date_created() ? $product->get_date_created()->getTimestamp() : 0;
+                    $days_old = ( current_time('timestamp') - $created_date ) / DAY_IN_SECONDS;
+                    
+                    if ( $total_sales >= $badges_bestseller_sales ) {
+                        $badge_text = 'Bestseller';
+                        $is_dynamic_badge = true;
+                    } elseif ( $created_date && $days_old <= $badges_new_days ) {
+                        $badge_text = 'New Drop';
+                        $is_dynamic_badge = true;
+                    }
+                }
+                if ( ! $badge_text ) {
+                    if ( $on_sale ) {
+                        $badge_text = 'Sale';
+                    } elseif ( $cat_label ) {
+                        $badge_text = $cat_label;
+                    }
+                }
+            }
+            if ( $is_dynamic_badge ) {
+                $badge_class .= ' dynamic-badge';
+            }
           ?>
           <div class="te-card <?php echo esc_attr($cat_cls); ?>" data-te-item>
             <div class="te-card-img">
-              <?php if ( $on_sale ): ?>
-              <span class="te-badge">Sale</span>
-              <?php elseif ( $cat_label ): ?>
-              <span class="te-badge"><?php echo esc_html($cat_label); ?></span>
+              <?php if ( $badge_text ): ?>
+              <span class="<?php echo esc_attr($badge_class); ?>"><?php echo esc_html($badge_text); ?></span>
               <?php endif; ?>
 
               <a href="<?php echo esc_url($purl); ?>">
@@ -298,13 +347,44 @@ function tryl_editorial_shop_shortcode( $atts ) {
                 <?php echo esc_html($product->get_name()); ?>
               </a>
               <div class="te-card-footer">
-                <div class="te-card-price"><?php echo $product->get_price_html(); ?></div>
+                <div class="te-card-price"><?php echo wp_kses_post($product->get_price_html()); ?></div>
                 <div class="te-card-footer-actions">
-                  <?php if($is_var): ?>
-                  <a href="<?php echo esc_url($purl); ?>" class="tryl-atc te-atc tryl-atc-choose" data-pid="<?php echo $pid; ?>" data-variable="1">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-                    <span>Add</span>
-                  </a>
+                  <?php if ( ! $is_in_stock ) : ?>
+                  <button class="tryl-atc te-atc disabled" disabled style="opacity:0.5;cursor:not-allowed;">
+                    <span>Out of Stock</span>
+                  </button>
+                  <?php elseif($is_var): 
+                      $available_variations = $product->get_available_variations();
+                  ?>
+                  <div class="tryl-inline-var-wrapper" style="position:relative;">
+                    <button class="tryl-atc te-atc te-atc-choose tryl-atc-inline-toggle" type="button">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                      <span>Size</span>
+                    </button>
+                    <div class="tryl-inline-var-dropdown" style="display:none; position:absolute; bottom:calc(100% + 8px); right:0; background:var(--te-card); border:1px solid var(--te-sand); box-shadow:0 8px 24px rgba(0,0,0,0.1); z-index:100; padding:8px; border-radius:8px; min-width:140px;">
+                        <div style="font-size:0.6rem; color:var(--te-stone); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--te-sand); text-align:center;">Select Option</div>
+                        <div style="display:flex; flex-direction:column; gap:4px; max-height:200px; overflow-y:auto;">
+                        <?php 
+                        $has_in_stock = false;
+                        foreach ( $available_variations as $var ) : 
+                            if ( ! $var['is_in_stock'] || ! $var['is_purchasable'] ) continue;
+                            $has_in_stock = true;
+                            $attr_vals = [];
+                            foreach ($var['attributes'] as $k => $v) {
+                                $term = get_term_by('slug', $v, str_replace('attribute_', '', $k));
+                                $attr_vals[] = $term ? $term->name : ucfirst($v);
+                            }
+                            $label = implode(' / ', $attr_vals) ?: 'Option';
+                        ?>
+                            <button class="te-atc-variation tryl-atc-variation" data-pid="<?php echo $pid; ?>" data-vid="<?php echo $var['variation_id']; ?>" type="button" style="width:100%; text-align:left; padding:8px 12px; background:var(--te-cream); border:1px solid var(--te-sand); cursor:pointer; font-family:'Inter',sans-serif; font-size:0.7rem; font-weight:600; text-transform:uppercase; color:var(--te-ink); transition:all 0.2s; border-radius:6px;">
+                                <?php echo esc_html( $label ); ?>
+                            </button>
+                        <?php endforeach; 
+                        if ( ! $has_in_stock ) echo '<div style="font-size:0.65rem; color:var(--te-stone); text-align:center; padding:8px;">Sold Out</div>';
+                        ?>
+                        </div>
+                    </div>
+                  </div>
                   <?php else: ?>
                   <button class="tryl-atc te-atc" data-pid="<?php echo $pid; ?>">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
@@ -324,9 +404,15 @@ function tryl_editorial_shop_shortcode( $atts ) {
           <?php endforeach; ?>
         </div>
 
+        <?php
+        $shop_url = get_option('tryl_nav_shop');
+        if ( empty( $shop_url ) ) {
+            $shop_url = 'https://therighteousyieldlife.com/the-shop-wip/';
+        }
+        ?>
         <!-- CTA -->
         <div class="te-cta">
-          <a href="<?php echo esc_url( get_permalink( wc_get_page_id( 'shop' ) ) ); ?>" class="te-cta-link">
+          <a href="<?php echo esc_url( $shop_url ); ?>" class="te-cta-link">
             View All Items
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="5" y1="12" x2="19" y2="12"/>
@@ -464,14 +550,16 @@ function tryl_editorial_shop_shortcode( $atts ) {
     <?php
     return ob_get_clean();
 }
+}
 add_shortcode( 'tryl_shop_editorial', 'tryl_editorial_shop_shortcode' );
 
 
 // ─── SOFT CART & CHECKOUT OVERLAY (editorial palette) ────────────────────────
 // Only activates when a query param ?skin=editorial is present,
 // OR you can hook it permanently by removing the condition below.
+if ( ! function_exists( 'tryl_editorial_cart_css' ) ) {
 function tryl_editorial_cart_css() {
-    if ( ! is_cart() && ! is_checkout() ) return;
+    if ( ! function_exists( 'is_cart' ) || ( ! is_cart() && ! is_checkout() ) ) return;
     // Remove the next line to make the editorial cart the permanent style
     if ( empty( $_GET['skin'] ) || $_GET['skin'] !== 'editorial' ) return;
     ?>
@@ -580,5 +668,6 @@ function tryl_editorial_cart_css() {
     #payment ul.payment_methods li{background:var(--te-card)!important;border:1px solid var(--te-sand)!important;border-radius:10px!important;padding:14px!important;margin-bottom:8px!important;list-style:none!important;}
     </style>
     <?php
+}
 }
 add_action( 'wp_head', 'tryl_editorial_cart_css' );

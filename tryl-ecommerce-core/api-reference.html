@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRYL Ecosystem API Reference</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: #1a2e1a;
+            background: #f5f8f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 24px;
+        }
+
+        h1 {
+            font-family: 'Barlow Condensed', sans-serif;
+            text-transform: uppercase;
+            font-size: 3rem;
+            color: #0d1b0f;
+            border-bottom: 3px solid #2d6a4f;
+            padding-bottom: 12px;
+            margin-bottom: 40px;
+        }
+
+        h2 {
+            font-family: 'Barlow Condensed', sans-serif;
+            text-transform: uppercase;
+            font-size: 2rem;
+            color: #2d6a4f;
+            margin-top: 48px;
+            margin-bottom: 24px;
+        }
+
+        .function-block {
+            background: #fff;
+            border: 1px solid #d4e0d4;
+            border-radius: 8px;
+            padding: 24px 32px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+        }
+
+        .function-name {
+            font-family: monospace;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0d1b0f;
+            background: #e8f0e8;
+            padding: 6px 12px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 16px;
+        }
+
+        .description {
+            margin-bottom: 20px;
+            color: #4a5c4a;
+        }
+
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .param-table th,
+        .param-table td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #e8f0e8;
+        }
+
+        .param-table th {
+            color: #6b7c6b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.8rem;
+        }
+
+        .type-badge {
+            background: #d4e0d4;
+            color: #1a2e1a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .return-section {
+            background: #fdfdfd;
+            border-left: 4px solid #31d190;
+            padding: 12px 16px;
+            font-size: 0.95rem;
+        }
+
+        .return-type {
+            font-weight: 700;
+            color: #2d6a4f;
+            font-family: monospace;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>TRYL Ecosystem API Reference</h1>
+        <p>A comprehensive guide to the custom functions driving the TRYL E-Commerce, Theme, and Integrations ecosystem.
+        </p>
+
+        <h2>Backend & Integrations (backend/functions.php)</h2>
+
+        <div class="function-block">
+            <div class="function-name">tryl_register_core_product_categories()</div>
+            <div class="description">Registers core product categories for the TRYL store. Ensures that 'Men', 'Women',
+                'Kids', and 'Hats & Accessories' categories exist upon initialization.</div>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">void</span></div>
+        </div>
+
+        <div class="function-block">
+            <div class="function-name">tryl_handle_prayer_request_submission()</div>
+            <div class="description">Handles the submission of the Prayer Request form. Verifies the nonce, sanitizes
+                input, sends notification emails, and saves the request as a 'prayer_request' custom post type.</div>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">void</span></div>
+        </div>
+
+        <div class="function-block">
+            <div class="function-name">tryl_register_prayer_cpt()</div>
+            <div class="description">Registers the 'prayer_request' Custom Post Type. Sets up a private CPT accessible
+                via the admin dashboard for managing user-submitted prayer requests.</div>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">void</span></div>
+        </div>
+
+        <div class="function-block">
+            <div class="function-name">tryl_prayer_meta_box_html( $post )</div>
+            <div class="description">Renders the HTML for the 'Prayer Details & Response' meta box. Displays the
+                requester's details, their prayer, and provides a form for admins to send a reply via email.</div>
+            <table class="param-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>$post</td>
+                    <td><span class="type-badge">WP_Post</span></td>
+                    <td>The current post object.</td>
+                </tr>
+            </table>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">void</span></div>
+        </div>
+
+        <div class="function-block">
+            <div class="function-name">tryl_save_prayer_reply( $post_id )</div>
+            <div class="description">Saves the data from the 'Prayer Details & Response' meta box. Handles sending the
+                reply email to the requester and updating the prayer request's status and public visibility metadata.
+            </div>
+            <table class="param-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>$post_id</td>
+                    <td><span class="type-badge">int</span></td>
+                    <td>The ID of the post being saved.</td>
+                </tr>
+            </table>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">void</span></div>
+        </div>
+
+        <div class="function-block">
+            <div class="function-name">tryl_register_printful_route()</div>
+            <div class="description">Registers the custom REST API route for Printful webhooks. (Route: POST
+                /wp-json/tryl/v1/printful-sync).</div>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">void</span></div>
+        </div>
+
+        <div class="function-block">
+            <div class="function-name">tryl_verify_printful_webhook( $request )</div>
+            <div class="description">Verifies the authentication token for incoming Printful webhooks by comparing the
+                'token' query parameter against the stored setting.</div>
+            <table class="param-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>$request</td>
+                    <td><span class="type-badge">WP_REST_Request</span></td>
+                    <td>The incoming REST request.</td>
+                </tr>
+            </table>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">bool</span> True if
+                authorized, false otherwise.</div>
+        </div>
+
+        <div class="function-block">
+            <div class="function-name">tryl_handle_printful_sync( $request )</div>
+            <div class="description">Processes incoming Printful webhook payloads. Handles 'package_shipped',
+                'package_returned', 'order_failed', and 'order_canceled' events to automatically update WooCommerce
+                order statuses and metadata.</div>
+            <table class="param-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>$request</td>
+                    <td><span class="type-badge">WP_REST_Request</span></td>
+                    <td>The incoming REST request.</td>
+                </tr>
+            </table>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">WP_REST_Response |
+                    WP_Error</span> Response object or Error if invalid.</div>
+        </div>
+
+        <div class="function-block">
+            <div class="function-name">tryl_ensure_payment_gateways( $gateways )</div>
+            <div class="description">Enforces required payment gateways in WooCommerce.</div>
+            <table class="param-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>$gateways</td>
+                    <td><span class="type-badge">array</span></td>
+                    <td>Array of available payment gateways.</td>
+                </tr>
+            </table>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">array</span> Filtered array
+                of payment gateways.</div>
+        </div>
+
+        <h2>Theme Functions (tryl-theme/functions.php)</h2>
+
+        <div class="function-block">
+            <div class="function-name">tryl_theme_setup()</div>
+            <div class="description">Sets up theme defaults and registers support for various WordPress features (title
+                tags, thumbnails, custom logo).</div>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">void</span></div>
+        </div>
+
+        <div class="function-block">
+            <div class="function-name">tryl_enqueue_assets()</div>
+            <div class="description">Enqueues the theme's stylesheets and scripts. Includes GSAP and ScrollTrigger for
+                custom animations.</div>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">void</span></div>
+        </div>
+
+        <div class="function-block">
+            <div class="function-name">tryl_hero_section_shortcode( $atts )</div>
+            <div class="description">Hero Section HTML Shortcode. Renders the GSAP-animated hero portrait and typography
+                section.</div>
+            <table class="param-table">
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>$atts</td>
+                    <td><span class="type-badge">array</span></td>
+                    <td>Shortcode attributes (image, text_left, text_right, btn_text, btn_url).</td>
+                </tr>
+            </table>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">string</span> HTML output of
+                the hero section.</div>
+        </div>
+
+        <div class="function-block">
+            <div class="function-name">tryl_prayer_wall_shortcode()</div>
+            <div class="description">Public Prayer Wall Shortcode. Displays approved anonymous prayer requests in a grid
+                layout.</div>
+            <div class="return-section"><strong>Returns:</strong> <span class="return-type">string</span> HTML output
+                for the prayer wall grid.</div>
+        </div>
+
+    </div>
+</body>
+
+</html>
