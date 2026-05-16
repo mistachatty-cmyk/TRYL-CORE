@@ -2384,7 +2384,7 @@ function tryl_register_admin_page() {
 add_action( 'admin_menu', 'tryl_register_admin_page' );
 
 function tryl_register_settings() {
-    $settings = ['tryl_default_theme', 'tryl_font_pack', 'tryl_shop_grid_limit', 'tryl_nav_active', 'tryl_nav_shop', 'tryl_nav_checkout', 'tryl_nav_mission', 'tryl_nav_prayer', 'tryl_nav_contact', 'tryl_nav_shipping', 'tryl_nav_faq', 'tryl_nav_privacy', 'tryl_nav_terms', 'tryl_footer_active', 'tryl_free_shipping_threshold', 'tryl_footer_desc', 'tryl_prayer_email', 'tryl_developer_signature', 'tryl_header_logo', 'tryl_printful_token', 'tryl_announcement_active', 'tryl_announcement_text', 'tryl_announcement_url', 'tryl_announcement_bg', 'tryl_announcement_text_color', 'tryl_badges_active', 'tryl_badges_new_days', 'tryl_badges_bestseller_sales', 'tryl_badges_bg', 'tryl_badges_text_color', 'tryl_footer_layout_style', 'tryl_footer_hover_anim', 'tryl_footer_mobile_center', 'tryl_popup_active', 'tryl_popup_heading', 'tryl_popup_text', 'tryl_popup_action_url', 'tryl_popup_btn_text', 'tryl_nextgen_emails_active', 'tryl_email_hero_url', 'tryl_email_footer_msg', 'tryl_checkout_animations', 'tryl_hero_image', 'tryl_hero_text_left', 'tryl_hero_text_right', 'tryl_hero_btn_text', 'tryl_hero_btn_url', 'tryl_nike_checkout_active', 'tryl_nike_checkout_accent', 'tryl_nike_checkout_input_bg', 'tryl_premium_products_active', 'tryl_custom_404_active', 'tryl_prayer_auto_sub', 'tryl_prayer_auto_msg', 'tryl_checkout_features_active', 'tryl_gift_wrapping_fee', 'tryl_product_accordion_active', 'tryl_product_accordion_title', 'tryl_product_accordion_content', 'tryl_product_accordion_categories', 'tryl_atc_btn_text', 'tryl_atc_notice_active', 'tryl_atc_notice_text', 'tryl_sp_trust_badges_active', 'tryl_header_checkout_cta', 'tryl_floating_checkout_active', 'tryl_mobile_menu_align', 'tryl_social_instagram', 'tryl_social_tiktok', 'tryl_social_twitter', 'tryl_social_youtube', 'tryl_social_facebook'];
+    $settings = ['tryl_default_theme', 'tryl_font_pack', 'tryl_shop_grid_limit', 'tryl_nav_active', 'tryl_nav_shop', 'tryl_nav_checkout', 'tryl_nav_mission', 'tryl_nav_prayer', 'tryl_nav_contact', 'tryl_nav_shipping', 'tryl_nav_faq', 'tryl_nav_privacy', 'tryl_nav_terms', 'tryl_footer_active', 'tryl_free_shipping_threshold', 'tryl_footer_desc', 'tryl_prayer_email', 'tryl_developer_signature', 'tryl_header_logo', 'tryl_printful_token', 'tryl_printful_sync_enabled', 'tryl_printful_sync_time', 'tryl_printful_auto_publish', 'tryl_printful_inventory_sync', 'tryl_announcement_active', 'tryl_announcement_text', 'tryl_announcement_url', 'tryl_announcement_bg', 'tryl_announcement_text_color', 'tryl_badges_active', 'tryl_badges_new_days', 'tryl_badges_bestseller_sales', 'tryl_badges_bg', 'tryl_badges_text_color', 'tryl_footer_layout_style', 'tryl_footer_hover_anim', 'tryl_footer_mobile_center', 'tryl_popup_active', 'tryl_popup_heading', 'tryl_popup_text', 'tryl_popup_action_url', 'tryl_popup_btn_text', 'tryl_nextgen_emails_active', 'tryl_email_hero_url', 'tryl_email_footer_msg', 'tryl_checkout_animations', 'tryl_hero_image', 'tryl_hero_text_left', 'tryl_hero_text_right', 'tryl_hero_btn_text', 'tryl_hero_btn_url', 'tryl_nike_checkout_active', 'tryl_nike_checkout_accent', 'tryl_nike_checkout_input_bg', 'tryl_premium_products_active', 'tryl_custom_404_active', 'tryl_prayer_auto_sub', 'tryl_prayer_auto_msg', 'tryl_checkout_features_active', 'tryl_gift_wrapping_fee', 'tryl_product_accordion_active', 'tryl_product_accordion_title', 'tryl_product_accordion_content', 'tryl_product_accordion_categories', 'tryl_atc_btn_text', 'tryl_atc_notice_active', 'tryl_atc_notice_text', 'tryl_sp_trust_badges_active', 'tryl_header_checkout_cta', 'tryl_floating_checkout_active', 'tryl_mobile_menu_align', 'tryl_social_instagram', 'tryl_social_tiktok', 'tryl_social_twitter', 'tryl_social_youtube', 'tryl_social_facebook', 'tryl_myaccount_reskin_active', 'tryl_order_bump_active', 'tryl_order_bump_label', 'tryl_order_bump_fee'];
     foreach ($settings as $setting) {
         register_setting('tryl_settings_group', $setting);
     }
@@ -2721,6 +2721,22 @@ function tryl_admin_page_html() {
                             </div>
                         </div>
                         <div class="tryl-admin-card">
+                            <h2><span class="dashicons dashicons-controls-forward"></span> 1-Click Order Bump</h2>
+                            <div class="tryl-toggle-wrap">
+                                <label for="tryl_order_bump_active">Enable Order Bump Upsell</label>
+                                <input type="hidden" name="tryl_order_bump_active" value="0" />
+                                <input type="checkbox" id="tryl_order_bump_active" class="tryl-toggle" name="tryl_order_bump_active" value="1" <?php checked(get_option('tryl_order_bump_active'), '1'); ?> />
+                            </div>
+                            <div class="tryl-admin-row">
+                                <label>Offer Label</label>
+                                <input type="text" name="tryl_order_bump_label" value="<?php echo esc_attr(get_option('tryl_order_bump_label', 'Add a Righteous Yield Sticker Pack for $4.00')); ?>" />
+                            </div>
+                            <div class="tryl-admin-row">
+                                <label>Fee Amount ($)</label>
+                                <input type="number" step="0.01" name="tryl_order_bump_fee" value="<?php echo esc_attr(get_option('tryl_order_bump_fee', '4.00')); ?>" />
+                            </div>
+                        </div>
+                        <div class="tryl-admin-card">
                             <h2>Nike Checkout System</h2>
                             <div class="tryl-toggle-wrap">
                                 <label for="tryl_nike_checkout_active">Enable Premium Nike Checkout</label>
@@ -2802,25 +2818,123 @@ function tryl_admin_page_html() {
                             <div class="tryl-admin-row"><label>Notification Receiver Email</label><input type="email" name="tryl_prayer_email" value="<?php echo esc_attr(get_option('tryl_prayer_email', get_option('admin_email'))); ?>" /></div>
                             <div class="tryl-admin-row"><label>Auto-Responder Message</label><textarea name="tryl_prayer_auto_msg" rows="4"><?php echo esc_textarea(get_option('tryl_prayer_auto_msg')); ?></textarea></div>
                         </div>
-                        <div class="tryl-admin-card">
-                            <h2>Technical Infrastructure</h2>
-                            <div class="tryl-admin-row"><label>Printful API Token</label><input type="text" name="tryl_printful_token" value="<?php echo esc_attr(get_option('tryl_printful_token')); ?>" /></div>
-                        </div>
+<div class="tryl-admin-card">
+    <h2>Technical Infrastructure</h2>
+    <div class="tryl-admin-row"><label>Printful API Token</label><input type="text" name="tryl_printful_token" value="<?php echo esc_attr(get_option('tryl_printful_token')); ?>" /></div>
+</div>
+
+<div class="tryl-admin-card">
+    <h2>Printful Synchronization</h2>
+    <div class="tryl-toggle-wrap">
+        <label for="tryl_printful_sync_enabled">Enable Printful Synchronization</label>
+        <input type="hidden" name="tryl_printful_sync_enabled" value="0" />
+        <input type="checkbox" id="tryl_printful_sync_enabled" class="tryl-toggle" name="tryl_printful_sync_enabled" value="1" <?php checked(get_option('tryl_printful_sync_enabled'), '1'); ?> />
+    </div>
+    <div class="tryl-admin-row">
+        <label>Sync Schedule</label>
+        <select name="tryl_printful_sync_time">
+            <option value="hourly" <?php selected(get_option('tryl_printful_sync_time', 'hourly'), 'hourly'); ?>>Hourly</option>
+            <option value="twicedaily" <?php selected(get_option('tryl_printful_sync_time', 'hourly'), 'twicedaily'); ?>>Twice Daily</option>
+            <option value="daily" <?php selected(get_option('tryl_printful_sync_time', 'hourly'), 'daily'); ?>>Daily</option>
+            <option value="weekly" <?php selected(get_option('tryl_printful_sync_time', 'hourly'), 'weekly'); ?>>Weekly</option>
+        </select>
+        <p class="description">How often to automatically sync products and inventory from Printful.</p>
+    </div>
+    <div class="tryl-toggle-wrap">
+        <label for="tryl_printful_auto_publish">Auto-Publish Imported Products</label>
+        <input type="hidden" name="tryl_printful_auto_publish" value="0" />
+        <input type="checkbox" id="tryl_printful_auto_publish" class="tryl-toggle" name="tryl_printful_auto_publish" value="1" <?php checked(get_option('tryl_printful_auto_publish'), '1'); ?> />
+    </div>
+    <p class="description">When enabled, newly imported products will be published immediately. When disabled, they are saved as drafts for review.</p>
+    <div class="tryl-toggle-wrap">
+        <label for="tryl_printful_inventory_sync">Enable Real-Time Inventory Sync</label>
+        <input type="hidden" name="tryl_printful_inventory_sync" value="0" />
+        <input type="checkbox" id="tryl_printful_inventory_sync" class="tryl-toggle" name="tryl_printful_inventory_sync" value="1" <?php checked(get_option('tryl_printful_inventory_sync'), '1'); ?> />
+    </div>
+    <p class="description">When enabled, inventory levels are updated in real-time via webhooks. Requires webhook setup.</p>
+</div>
+
+<div class="tryl-admin-card">
+    <h2>Printful Order Routing</h2>
+    <div class="tryl-toggle-wrap">
+        <label for="tryl_printful_order_routing">Enable Automatic Order Routing</label>
+        <input type="hidden" name="tryl_printful_order_routing" value="0" />
+        <input type="checkbox" id="tryl_printful_order_routing" class="tryl-toggle" name="tryl_printful_order_routing" value="1" <?php checked(get_option('tryl_printful_order_routing'), '1'); ?> />
+    </div>
+    <div class="tryl-admin-row">
+        <label>Order Routing Rules</label>
+        <select name="tryl_printful_routing_rules" multiple size="4" style="width: 100%; height: 150px;">
+            <option value="all" <?php selected(get_option('tryl_printful_routing_rules', 'all'), 'all'); ?>>Send all orders to Printful</option>
+            <option value="printful_only" <?php selected(get_option('tryl_printful_routing_rules', 'all'), 'printful_only'); ?>>Only Printful products</option>
+            <option value="shipping_us" <?php selected(get_option('tryl_printful_routing_rules', 'all'), 'shipping_us'); ?>>US shipping addresses only</option>
+            <option value="priority_shipping" <?php selected(get_option('tryl_printful_routing_rules', 'all'), 'priority_shipping'); ?>>Priority/Express shipping only</option>
+            <option value="high_value" <?php selected(get_option('tryl_printful_routing_rules', 'all'), 'high_value'); ?>>Orders over $100</option>
+        </select>
+        <p class="description">Hold Ctrl (Cmd on Mac) to select multiple rules. Orders matching ANY selected rule will be sent to Printful.</p>
+    </div>
+    <div class="tryl-toggle-wrap">
+        <label for="tryl_printful_order_override">Allow Manual Order Override</label>
+        <input type="hidden" name="tryl_printful_order_override" value="0" />
+        <input type="checkbox" id="tryl_printful_order_override" class="tryl-toggle" name="tryl_printful_order_override" value="1" <?php checked(get_option('tryl_printful_order_override'), '1'); ?> />
+    </div>
+    <p class="description">When enabled, you can manually choose to send or not send individual orders to Printful from the order edit screen.</p>
+</div>
                     </div>
 
-                    <!-- 7. DOCUMENTATION TAB -->
-                    <div id="tab-docs" class="tryl-tab-content">
-                        <div class="tryl-admin-card">
-                            <h2>Merchant Support Hub</h2>
-                            <div class="tryl-guide-grid">
-                                <div class="tryl-guide-card">
-                                    <h3>Quick Shortcodes</h3>
-                                    <ul style="list-style: none; padding: 0; font-size: 0.9rem; line-height: 2;">
-                                        <li><code>[tryl_hero]</code> — Entrance</li>
-                                        <li><code>[tryl_shop_editorial]</code> — Luxury Grid</li>
-                                        <li><code>[tryl_prayer_form]</code> — Interaction</li>
-                                    </ul>
-                                </div>
+<!-- 7. DOCUMENTATION TAB -->
+<div id="tab-docs" class="tryl-tab-content">
+    <div class="tryl-admin-card">
+        <h2>Merchant Support Hub</h2>
+        <div class="tryl-guide-grid">
+            <div class="tryl-guide-card">
+                <h3>Quick Shortcodes</h3>
+                <ul style="list-style: none; padding: 0; font-size: 0.9rem; line-height: 2;">
+                    <li><code>[tryl_hero]</code> — Entrance</li>
+                    <li><code>[tryl_3d_shop]</code> — Standard Grid</li>
+                    <li><code>[tryl_shop_editorial]</code> — Luxury Grid</li>
+                    <li><code>[tryl_prayer_form]</code> — Interaction</li>
+                </ul>
+            </div>
+            <div class="tryl-guide-card">
+                <h3>System Maintenance</h3>
+                <p style="font-size: 0.85rem; line-height: 1.6;">If shop links fail or 404, click the button below to refresh the site routing map.</p>
+                <a href="options-permalink.php" class="button button-primary">Flush Permalinks</a>
+            </div>
+            <div class="tryl-guide-card">
+                <h3>Essential Site URLs</h3>
+                <div class="tryl-url-box">
+                    <strong>Shop:</strong> <?php echo esc_html(get_option('tryl_nav_shop', home_url('/shop/'))); ?><br>
+                    <strong>Cart:</strong> <?php echo esc_html(function_exists('wc_get_cart_url') ? wc_get_cart_url() : home_url('/cart/')); ?><br>
+                    <strong>Checkout:</strong> <?php echo esc_html(get_option('tryl_nav_checkout', home_url('/checkout/'))); ?>
+                </div>
+            </div>
+            <div class="tryl-guide-card">
+                <h3>Printful Integration Guide</h3>
+                <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Automated Product Sync:</strong> Automatically imports products from Printful to WooCommerce. Configure in Integrations tab → Printful Synchronization.</p>
+                <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Real-Time Inventory:</strong> Keep stock levels synchronized to prevent overselling. Enable Real-Time Inventory Sync for webhook-based updates.</p>
+                <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Smart Order Routing:</strong> Automatically send orders to Printful based on rules (product type, location, shipping method, order value). Configure in Integrations tab → Printful Order Routing.</p>
+                <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Manual Order Control:</strong> Override automatic routing per-order from the order edit screen when Manual Override is enabled.</p>
+                <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Status Synchronization:</strong> Printful order status updates automatically update WooCommerce order status.</p>
+                <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Setup Steps:</strong></p>
+                <ol style="font-size: 0.85rem; line-height: 1.6; margin-left: 20px;">
+                    <li>Enter your Printful API token in Integrations tab</li>
+                    <li>Enable Printful Synchronization and configure schedule</li>
+                    <li>Enable Real-Time Inventory Sync (recommended)</li>
+                    <li>Configure Order Routing rules as needed</li>
+                    <li>Save changes and let the system run automatically</li>
+                </ol>
+            </div>
+            <div class="tryl-guide-card">
+                <h3>Shop Features</h3>
+                <p style="font-size: 0.85rem; line-height: 1.6;"><strong>3D Product Tilt:</strong> Products respond to mouse movement with subtle tilt effect</p>
+                <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Inline Variant Selection:</strong> Select size/color directly on product cards (no page reload)</p>
+                <p style="font-size: 0.85rem; line-height: 1.6;"><strong>AJAX Add to Cart:</strong> Items add instantly with mini-cart animation</p>
+                <p style="font-size: 0.85rem; line-height: 1.6;"><strong>GSAP Animations:</strong> Smooth transitions throughout the shopping experience</p>
+                <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Theme System:</strong> Bright/Mild/Dark modes with automatic OS detection</p>
+            </div>
+        </div>
+    </div>
+</div>
                                 <div class="tryl-guide-card">
                                     <h3>System Maintenance</h3>
                                     <p style="font-size: 0.85rem; line-height: 1.6;">If shop links fail or 404, click the button below to refresh the site routing map.</p>
@@ -3135,7 +3249,7 @@ function lok_bridge_log_event( $file_path, $status, $ip ) {
     // Keep only the last 100 deployments to prevent database bloat
     $log = array_slice( $log, 0, 100 );
     update_option( 'lokservices_audit_log', $log );
-
+    
     // Send email alert if enabled and the deployment was unsuccessful
     if ( get_option('lokservices_enable_alerts') === '1' && (strpos($status, 'Failed') !== false || strpos($status, 'Blocked') !== false) ) {
         $site_name = get_bloginfo('name');
@@ -3143,6 +3257,757 @@ function lok_bridge_log_event( $file_path, $status, $ip ) {
     }
 }
 }
+
+// ─── PRINTFUL INTEGRATION ───
+if ( ! function_exists( 'tryl_printful_api_request' ) ) {
+function tryl_printful_api_request( $endpoint, $method = 'GET', $data = null ) {
+    $api_token = get_option( 'tryl_printful_token' );
+    if ( empty( $api_token ) ) {
+        return new WP_Error( 'no_token', 'Printful API token not configured.' );
+    }
+    
+    $headers = [
+        'Authorization' => 'Bearer ' . $api_token,
+        'Content-Type' => 'application/json',
+    ];
+    
+    $args = [
+        'headers' => $headers,
+        'method' => $method,
+        'timeout' => 30,
+        'httpversion' => '1.1',
+        'sslverify' => true,
+    ];
+    
+    if ( $data !== null && in_array( $method, ['POST', 'PUT', 'PATCH'] ) ) {
+        $args['body'] = wp_json_encode( $data );
+    }
+    
+    $response = wp_remote_get( 'https://api.printful.com/' . $endpoint, $args );
+    
+    if ( is_wp_error( $response ) ) {
+        return $response;
+    }
+    
+    $body = wp_remote_retrieve_body( $response );
+    $code = wp_remote_retrieve_response_code( $response );
+    
+    if ( $code >= 200 && $code < 300 ) {
+        $result = json_decode( $body, true );
+        if ( isset( $result['result'] ) ) {
+            return $result['result'];
+        }
+        return $result;
+    } else {
+        return new WP_Error( 'api_error', 'Printful API error: ' . $code, [ 'response' => $response ] );
+    }
+}
+}
+
+if ( ! function_exists( 'tryl_printful_sync_products' ) ) {
+function tryl_printful_sync_products() {
+    if ( get_option( 'tryl_printful_sync_enabled' ) !== '1' ) {
+        return;
+    }
+    
+    // Get products from Printful
+    $products = tryl_printful_api_request( 'store/products' );
+    if ( is_wp_error( $products ) ) {
+        error_log( 'Printful product sync failed: ' . $products->get_error_message() );
+        return;
+    }
+    
+    $auto_publish = get_option( 'tryl_printful_auto_publish' ) === '1' ? 'publish' : 'draft';
+    
+    foreach ( $products as $product ) {
+        // Check if product already exists
+        $existing_post = get_posts( [
+            'post_type' => 'product',
+            'meta_query' => [
+                [
+                    'key' => '_tryl_printful_product_id',
+                    'value' => $product['id'],
+                ]
+            ],
+            'posts_per_page' => 1,
+        ] );
+        
+        $product_data = [
+            'post_title'   => $product['name'],
+            'post_status'  => $auto_publish,
+            'post_type'    => 'product',
+            'post_content' => $product['description'] ?? '',
+        ];
+        
+        if ( ! empty( $existing_post ) ) {
+            $product_data['ID'] = $existing_post[0]->ID;
+        }
+        
+        $post_id = wp_insert_post( $product_data );
+        
+        if ( ! is_wp_error( $post_id ) ) {
+            // Update printful ID meta
+            update_post_meta( $post_id, '_tryl_printful_product_id', $product['id'] );
+            
+            // Handle variants
+            if ( ! empty( $product['variants'] ) ) {
+                foreach ( $product['variants'] as $variant ) {
+                    // Check if variation already exists
+                    $existing_variation = get_posts( [
+                        'post_type' => 'product_variation',
+                        'post_parent' => $post_id,
+                        'meta_query' => [
+                            [
+                                'key' => '_tryl_printful_variant_id',
+                                'value' => $variant['id'],
+                            ]
+                        ],
+                        'posts_per_page' => 1,
+                    ] );
+                    
+                    if ( empty( $existing_variation ) ) {
+                        // Create variation
+                        $variation_data = [
+                            'post_title'  => $variant['name'] ?? 'Variant',
+                            'post_status' => 'publish',
+                            'post_type'   => 'product_variation',
+                            'post_parent' => $post_id,
+                        ];
+                        
+                        $variation_id = wp_insert_post( $variation_data );
+                        
+                        if ( ! is_wp_error( $variation_id ) ) {
+                            update_post_meta( $variation_id, '_tryl_printful_variant_id', $variant['id'] );
+                            update_post_meta( $variation_id, '_price', $variant['price'] ?? '0' );
+                            update_post_meta( $variation_id, '_regular_price', $variant['price'] ?? '0' );
+                            update_post_meta( $variation_id, '_sku', $variant['sku'] ?? '' );
+                            update_post_meta( $variation_id, '_weight', $variant['weight'] ?? '0' );
+                            update_post_meta( $variation_id, '_length', $variant['length'] ?? '0' );
+                            update_post_meta( $variation_id, '_width', $variant['width'] ?? '0' );
+                            update_post_meta( $variation_id, '_height', $variant['height'] ?? '0' );
+                            
+                            // Handle attributes
+                            if ( ! empty( $variant['options'] ) ) {
+                                foreach ( $variant['options'] as $option ) {
+                                    // This would need attribute taxonomy setup
+                                    // For now, we'll store as meta
+                                    update_post_meta( $variation_id, '_attribute_' . sanitize_title( $option['name'] ), $option['value'] );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Update last sync time
+    update_option( 'tryl_printful_last_sync', current_time( 'mysql' ) );
+}
+}
+
+if ( ! function_exists( 'tryl_printful_sync_inventory' ) ) {
+function tryl_printful_sync_inventory() {
+    if ( get_option( 'tryl_printful_sync_enabled' ) !== '1' ) {
+        return;
+    }
+    
+    // Get stock items from Printful
+    $stock = tryl_printful_api_request( 'store/products/stock' );
+    if ( is_wp_error( $stock ) ) {
+        error_log( 'Printful inventory sync failed: ' . $stock->get_error_message() );
+        return;
+    }
+    
+    foreach ( $stock as $item ) {
+        // Find product by Printful product ID
+        $products = get_posts( [
+            'post_type' => 'product',
+            'meta_query' => [
+                [
+                    'key' => '_tryl_printful_product_id',
+                    'value' => $item['product_id'],
+                ]
+            ],
+            'posts_per_page' => 1,
+        ] );
+        
+        if ( ! empty( $products ) ) {
+            $product_id = $products[0]->ID;
+            
+            // Find variation by Printful variant ID
+            if ( ! empty( $item['variant_id'] ) ) {
+                $variations = get_posts( [
+                    'post_type' => 'product_variation',
+                    'post_parent' => $product_id,
+                    'meta_query' => [
+                        [
+                            'key' => '_tryl_printful_variant_id',
+                            'value' => $item['variant_id'],
+                        ]
+                    ],
+                    'posts_per_page' => 1,
+                ] );
+                
+                if ( ! empty( $variations ) ) {
+                    $variation_id = $variations[0]->ID;
+                    // Update stock for variation
+                    wc_update_product_stock( $variation_id, $item['total'], 'set' );
+                }
+            } else {
+                // Update stock for main product (simple product)
+                wc_update_product_stock( $product_id, $item['total'], 'set' );
+            }
+        }
+    }
+    
+    // Update last inventory sync time
+    update_option( 'tryl_printful_last_inventory_sync', current_time( 'mysql' ) );
+}
+}
+
+if ( ! function_exists( 'tryl_printful_webhook_handler' ) ) {
+function tryl_printful_webhook_handler() {
+    // Check if this is a Printful webhook
+    $signature = isset( $_SERVER['HTTP_X_PRINTFUL_SIGNATURE'] ) ? $_SERVER['HTTP_X_PRINTFUL_SIGNATURE'] : '';
+    $token = get_option( 'tryl_printful_token' );
+    
+    if ( empty( $signature ) || empty( $token ) ) {
+        status_header( 401 );
+        exit;
+    }
+    
+    // Verify signature (simplified - in production you'd want to verify properly)
+    $body = file_get_contents( 'php://input' );
+    $expected_signature = base64_encode( hash_hmac( 'sha256', $body, $token, true ) );
+    
+    if ( ! hash_equals( $signature, $expected_signature ) ) {
+        status_header( 401 );
+        exit;
+    }
+    
+    $data = json_decode( $body, true );
+    if ( json_last_error() !== JSON_ERROR_NONE ) {
+        status_header( 400 );
+        exit;
+    }
+    
+    // Handle different webhook types
+    if ( ! empty( $data['type'] ) ) {
+        switch ( $data['type'] ) {
+            case 'order':
+                // Handle order webhook
+                // This would typically be used to update order status
+                break;
+                
+            case 'product':
+                // Handle product webhook - trigger sync
+                if ( ! empty( $data['id'] ) ) {
+                    // Sync specific product
+                }
+                break;
+                
+            case 'stock':
+                // Handle stock webhook - trigger inventory sync
+                if ( get_option( 'tryl_printful_inventory_sync' ) === '1' ) {
+                    tryl_printful_sync_inventory();
+                }
+                break;
+        }
+    }
+    
+    // Return success
+    header( 'Content-Type: application/json' );
+    echo json_encode( [ 'success' => true ] );
+    exit;
+}
+}
+
+// Register Printful webhook endpoint
+if ( ! function_exists( 'tryl_register_printful_webhook' ) ) {
+function tryl_register_printful_webhook() {
+    register_rest_route( 'tryl-printful/v1', '/webhook', array(
+        'methods'             => 'POST',
+        'callback'            => 'tryl_printful_webhook_handler',
+        'args'                => array(
+            // No specific args needed for webhook
+        ),
+    ) );
+}
+add_action( 'rest_api_init', 'tryl_register_printful_webhook' );
+}
+
+// Schedule automated sync
+if ( ! function_exists( 'tryl_schedule_printful_sync' ) ) {
+function tryl_schedule_printful_sync() {
+    if ( wp_next_scheduled( 'tryl_printful_sync_hook' ) ) {
+        return;
+    }
+    
+    $schedule = get_option( 'tryl_printful_sync_time', 'daily' );
+    switch ( $schedule ) {
+        case 'hourly':
+            $recurrence = 'hourly';
+            break;
+        case 'twicedaily':
+            $recurrence = 'twicedaily';
+            break;
+        case 'weekly':
+            $recurrence = 'weekly';
+            break;
+        default: // daily
+            $recurrence = 'daily';
+            break;
+    }
+    
+    wp_schedule_event( time(), $recurrence, 'tryl_printful_sync_hook' );
+}
+}
+add_action( 'wp', 'tryl_schedule_printful_sync' );
+
+if ( ! function_exists( 'tryl_printful_sync_hook_callback' ) ) {
+function tryl_printful_sync_hook_callback() {
+    if ( get_option( 'tryl_printful_sync_enabled' ) === '1' ) {
+        tryl_printful_sync_products();
+        
+        if ( get_option( 'tryl_printful_inventory_sync' ) === '1' ) {
+            tryl_printful_sync_inventory();
+        }
+    }
+}
+}
+add_action( 'tryl_printful_sync_hook', 'tryl_printful_sync_hook_callback' );
+
+// ─── PRINTFUL ORDER ROUTING ───
+if ( ! function_exists( 'tryl_printful_submit_order' ) ) {
+function tryl_printful_submit_order( $order_id ) {
+    // Check if order routing is enabled
+    if ( get_option( 'tryl_printful_order_routing' ) !== '1' ) {
+        return new WP_Error( 'routing_disabled', 'Printful order routing is disabled.' );
+    }
+    
+    // Get the order
+    $order = wc_get_order( $order_id );
+    if ( ! $order ) {
+        return new WP_Error( 'invalid_order', 'Invalid order ID.' );
+    }
+    
+    // Check if order should be routed to Printful based on rules
+    if ( ! tryl_printful_should_route_order( $order ) ) {
+        return new WP_Error( 'not_routed', 'Order does not match routing rules.' );
+    }
+    
+    // Check for manual override (if enabled)
+    if ( get_option( 'tryl_printful_order_override' ) === '1' ) {
+        $manual_override = get_post_meta( $order_id, '_tryl_printful_manual_override', true );
+        if ( $manual_override === 'skip' ) {
+            return new WP_Error( 'manual_skip', 'Order manually skipped for Printful routing.' );
+        }
+        // If manual_override is 'force' or not set, continue with normal routing
+    }
+    
+    // Prepare order data for Printful
+    $printful_order = tryl_printful_prepare_order_data( $order );
+    
+    if ( is_wp_error( $printful_order ) ) {
+        return $printful_order;
+    }
+    
+    // Submit order to Printful
+    $result = tryl_printful_api_request( 'orders', 'POST', $printful_order );
+    
+    if ( is_wp_error( $result ) ) {
+        // Log the error
+        error_log( 'Printful order submission failed for order '.$order_id.': '.$result->get_error_message() );
+        return $result;
+    }
+    
+    // Store Printful order ID and update order status
+    if ( ! empty( $result['id'] ) ) {
+        update_post_meta( $order_id, '_tryl_printful_order_id', $result['id'] );
+        
+        // Add note to order
+        $order->add_order_note( 
+            sprintf( 
+                'Order submitted to Printful. Printful Order ID: %d', 
+                $result['id'] 
+            ) 
+        );
+        
+        // Update custom status if needed
+        if ( get_option( 'tryl_printful_order_status' ) !== '' ) {
+            $order->update_status( get_option( 'tryl_printful_order_status' ), 
+                'Submitted to Printful (Order ID: '.$result['id'].')' 
+            );
+        }
+        
+        return $result;
+    } else {
+        return new WP_Error( 'invalid_response', 'Invalid response from Printful API.' );
+    }
+}
+}
+
+if ( ! function_exists( 'tryl_printful_should_route_order' ) ) {
+function tryl_printful_should_route_order( $order ) {
+    // Get routing rules
+    $rules = get_option( 'tryl_printful_routing_rules', 'all' );
+    if ( empty( $rules ) ) {
+        $rules = array( 'all' );
+    }
+    
+    // If 'all' is selected, route everything
+    if ( in_array( 'all', $rules ) ) {
+        return true;
+    }
+    
+    // Check each rule
+    foreach ( $rules as $rule ) {
+        switch ( $rule ) {
+            case 'printful_only':
+                // Check if order contains Printful products
+                if ( tryl_printful_order_contains_printful_products( $order ) ) {
+                    return true;
+                }
+                break;
+                
+            case 'shipping_us':
+                // Check if shipping to US
+                if ( tryl_printful_order_shipping_to_us( $order ) ) {
+                    return true;
+                }
+                break;
+                
+            case 'priority_shipping':
+                // Check if priority/express shipping
+                if ( tryl_printful_order_has_priority_shipping( $order ) ) {
+                    return true;
+                }
+                break;
+                
+            case 'high_value':
+                // Check if order value over threshold
+                $threshold = get_option( 'tryl_printful_high_value_threshold', '100' );
+                if ( $order->get_total() > floatval( $threshold ) ) {
+                    return true;
+                }
+                break;
+        }
+    }
+    
+    return false;
+}
+}
+
+if ( ! function_exists( 'tryl_printful_order_contains_printful_products' ) ) {
+function tryl_printful_order_contains_printful_products( $order ) {
+    foreach ( $order->get_items() as $item ) {
+        $product_id = $item->get_product_id();
+        $variation_id = $item->get_variation_id();
+        
+        // Check if product or variation has Printful ID
+        $printful_product_id = get_post_meta( $product_id, '_tryl_printful_product_id', true );
+        $printful_variation_id = get_post_meta( $variation_id ?: $product_id, '_tryl_printful_variant_id', true );
+        
+        if ( ! empty( $printful_product_id ) || ! empty( $printful_variation_id ) ) {
+            return true;
+        }
+    }
+    return false;
+}
+}
+
+if ( ! function_exists( 'tryl_printful_order_shipping_to_us' ) ) {
+function tryl_printful_order_shipping_to_us( $order ) {
+    $shipping_country = $order->get_shipping_country();
+    return $shipping_country === 'US';
+}
+}
+
+if ( ! function_exists( 'tryl_printful_order_has_priority_shipping' ) ) {
+function tryl_printful_order_has_priority_shipping( $order ) {
+    $shipping_method = $order->get_shipping_method();
+    $priority_keywords = array( 'express', 'priority', 'overnight', 'next day', '2-day' );
+    
+    foreach ( $priority_keywords as $keyword ) {
+        if ( stripos( $shipping_method, $keyword ) !== false ) {
+            return true;
+        }
+    }
+    return false;
+}
+}
+
+if ( ! function_exists( 'tryl_printful_prepare_order_data' ) ) {
+function tryl_printful_prepare_order_data( $order ) {
+    $recipient = array(
+        'name'      => $order->get_billing_first_name() . ' ' . $order->get_billing_last_name(),
+        'address1'  => $order->get_billing_address_1(),
+        'address2'  => $order->get_billing_address_2(),
+        'city'      => $order->get_billing_city(),
+        'state_code'=> $order->get_billing_state(),
+        'country_code'=> $order->get_billing_country(),
+        'zip'       => $order->get_billing_postcode(),
+        'phone'     => $order->get_billing_phone(),
+        'email'     => $order->get_billing_email(),
+    );
+    
+    $items = array();
+    foreach ( $order->get_items() as $item_id => $item ) {
+        $product_id = $item->get_product_id();
+        $variation_id = $item->get_variation_id();
+        
+        // Get Printful IDs
+        $printful_product_id = get_post_meta( $product_id, '_tryl_printful_product_id', true );
+        $printful_variation_id = get_post_meta( $variation_id ?: $product_id, '_tryl_printful_variant_id', true );
+        
+        // Fallback to product ID if no Printful ID found (shouldn't happen if routing works)
+        if ( empty( $printful_variation_id ) ) {
+            $printful_variation_id = $printful_product_id;
+        }
+        
+        if ( ! empty( $printful_variation_id ) ) {
+            $items[] = array(
+                'external_id'   => $item_id,
+                'variant_id'    => intval( $printful_variation_id ),
+                'quantity'      => $item->get_quantity(),
+                'value'         => $item->get_total(),
+                'name'          => $item->get_name(),
+            );
+        }
+    }
+    
+    // Get shipping cost from order
+    $shipping_cost = $order->get_shipping_total();
+    
+    // Get the selected shipping method name for Printful
+    $shipping_method_name = $order->get_shipping_method();
+    
+    // Map WooCommerce shipping to Printful shipping (simplified mapping)
+    // In a real implementation, you'd have a more comprehensive mapping
+    $shipping = array(
+        'amount'      => floatval( $shipping_cost ),
+        'description' => $shipping_method_name,
+        'tracking_number'  => '',
+    );
+    
+    // Apply discount if any
+    $discount = $order->get_discount_total();
+    $retail_cost = $order->get_total() - $shipping_cost;
+    
+    $order_data = array(
+        'recipient'   => $recipient,
+        'items'       => $items,
+        'shipping'    => $shipping,
+        'retail_cost' => floatval( $retail_cost ),
+        'currency'    => get_option( 'woocommerce_currency' ),
+        'note'        => sprintf( 'WooCommerce Order #%d', $order->get_id() ),
+    );
+    
+    return $order_data;
+}
+}
+
+if ( ! function_exists( 'tryl_printful_order_status_webhook' ) ) {
+function tryl_printful_order_status_webhook() {
+    // Verify webhook signature
+    $signature = isset( $_SERVER['HTTP_X_PRINTFUL_SIGNATURE'] ) ? $_SERVER['HTTP_X_PRINTFUL_SIGNATURE'] : '';
+    $token = get_option( 'tryl_printful_token' );
+    
+    if ( empty( $signature ) || empty( $token ) ) {
+        status_header( 401 );
+        exit;
+    }
+    
+    $body = file_get_contents( 'php://input' );
+    $expected_signature = base64_encode( hash_hmac( 'sha256', $body, $token, true ) );
+    
+    if ( ! hash_equals( $signature, $expected_signature ) ) {
+        status_header( 401 );
+        exit;
+    }
+    
+    $data = json_decode( $body, true );
+    if ( json_last_error() !== JSON_ERROR_NONE ) {
+        status_header( 400 );
+        exit;
+    }
+    
+    // Handle order status updates from Printful
+    if ( ! empty( $data['order'] ) && ! empty( $data['order']['id'] ) ) {
+        $printful_order_id = intval( $data['order']['id'] );
+        
+        // Find WooCommerce order by Printful order ID
+        $orders = get_posts( array(
+            'post_type'      => 'shop_order',
+            'meta_key'       => '_tryl_printful_order_id',
+            'meta_value'     => $printful_order_id,
+            'posts_per_page' => 1,
+        ) );
+        
+        if ( ! empty( $orders ) ) {
+            $order_id = $orders[0]->ID;
+            $order = wc_get_order( $order_id );
+            
+            if ( $order ) {
+                // Map Printful status to WooCommerce status
+                $printful_status = strtolower( $data['order']['status'] );
+                
+                // Define status mapping
+                $status_map = array(
+                    'draft'          => '',
+                    'pending'        => 'pending',
+                    'failed'         => 'failed',
+                    'cancelled'      => 'cancelled',
+                    'inprogress'     => 'processing',
+                    'fulfilled'      => 'completed',
+                    // Add more mappings as needed
+                );
+                
+                if ( isset( $status_map[ $printful_status ] ) && $status_map[ $printful_status ] !== '' ) {
+                    $new_status = $status_map[ $printful_status ];
+                    $order->update_status( $new_status, 
+                        'Updated from Printful: '.$printful_status 
+                    );
+                }
+                
+                // Update tracking information if available
+                if ( ! empty( $data['order']['tracking'] ) ) {
+                    foreach ( $data['order']['tracking'] as $tracking ) {
+                        $order->add_order_note( 
+                            sprintf( 
+                                'Printful tracking update: %s - %s (%s)', 
+                                $tracking['carrier'], 
+                                $tracking['number'], 
+                                $tracking['url'] 
+                            ) 
+                        );
+                    }
+                }
+            }
+        }
+    }
+    
+    // Return success
+    header( 'Content-Type: application/json' );
+    echo json_encode( [ 'success' => true ] );
+    exit;
+}
+}
+
+// Register Printful order status webhook endpoint
+if ( ! function_exists( 'tryl_register_printful_order_webhook' ) ) {
+function tryl_register_printful_order_webhook() {
+    register_rest_route( 'tryl-printful/v1', '/order-webhook', array(
+        'methods'             => 'POST',
+        'callback'            => 'tryl_printful_order_status_webhook',
+        'args'                => array(
+            // No specific args needed for webhook
+        ),
+    ) );
+}
+add_action( 'rest_api_init', 'tryl_register_printful_order_webhook' );
+}
+
+// Add manual override metabox to order edit screen
+if ( ! function_exists( 'tryl_printful_add_order_override_metabox' ) ) {
+function tryl_printful_add_order_override_metabox() {
+    add_meta_box(
+        'tryl_printful_order_override',
+        'Printful Order Routing',
+        'tryl_printful_order_override_metabox_callback',
+        'shop_order',
+        'side',
+        'high'
+    );
+}
+}
+add_action( 'add_meta_boxes', 'tryl_printful_add_order_override_metabox' );
+
+if ( ! function_exists( 'tryl_printful_order_override_metabox_callback' ) ) {
+function tryl_printful_order_override_metabox_callback( $post ) {
+    // Add nonce for security
+    wp_nonce_field( 'tryl_printful_order_override', 'tryl_printful_order_override_nonce' );
+    
+    // Get current override value
+    $override = get_post_meta( $post->ID, '_tryl_printful_manual_override', true );
+    ?>
+    <p>
+        <label for="tryl_printful_manual_override_force">
+            <input type="radio" name="tryl_printful_manual_override" value="force" id="tryl_printful_manual_override_force" <?php checked( $override, 'force' ); ?> />
+            Force send to Printful (ignore rules)
+        </label>
+    </p>
+    <p>
+        <label for="tryl_printful_manual_override_skip">
+            <input type="radio" name="tryl_printful_manual_override" value="skip" id="tryl_printful_manual_override_skip" <?php checked( $override, 'skip' ); ?> />
+            Skip Printful routing (ignore rules)
+        </label>
+    </p>
+    <p>
+        <label for="tryl_printful_manual_override_auto">
+            <input type="radio" name="tryl_printful_manual_override" value="auto" id="tryl_printful_manual_override_auto" <?php checked( $override, 'auto' ) || empty( $override ); ?> />
+            Use automatic routing rules
+        </label>
+    </p>
+    <?php
+}
+}
+
+// Save manual override value
+if ( ! function_exists( 'tryl_printful_save_order_override' ) ) {
+function tryl_printful_save_order_override( $post_id ) {
+    // Check nonce
+    if ( ! isset( $_POST['tryl_printful_order_override_nonce'] ) || 
+         ! wp_verify_nonce( $_POST['tryl_printful_order_override_nonce'], 'tryl_printful_order_override' ) ) {
+        return;
+    }
+    
+    // Check user permissions
+    if ( ! current_user_can( 'edit_post', $post_id ) ) {
+        return;
+    }
+    
+    // Save override value
+    if ( isset( $_POST['tryl_printful_manual_override'] ) ) {
+        $override = sanitize_text_field( $_POST['tryl_printful_manual_override'] );
+        update_post_meta( $post_id, '_tryl_printful_manual_override', $override );
+    } else {
+        // If no value submitted, delete the meta (default to auto)
+        delete_post_meta( $post_id, '_tryl_printful_manual_override' );
+    }
+}
+}
+add_action( 'save_post_shop_order', 'tryl_printful_save_order_override' );
+
+// Add order routing to checkout process
+if ( ! function_exists( 'tryl_printful_route_order_on_checkout' ) ) {
+function tryl_printful_route_order_on_checkout( $order_id ) {
+    if ( get_option( 'tryl_printful_order_routing' ) !== '1' ) {
+        return;
+    }
+    
+    // Small delay to ensure order is fully processed
+    sleep( 1 );
+    
+    // Submit order to Printful
+    $result = tryl_printful_submit_order( $order_id );
+    
+    if ( is_wp_error( $result ) ) {
+        // Log error but don't break checkout
+        error_log( 'Printful order routing failed for order '.$order_id.': '.$result->get_error_message() );
+        // Optionally add a note to the order about the failure
+        $order = wc_get_order( $order_id );
+        if ( $order ) {
+            $order->add_order_note( 
+                'Printful order routing failed: '.$result->get_error_message() 
+            );
+        }
+    }
+}
+}
+add_action( 'woocommerce_thankyou', 'tryl_printful_route_order_on_checkout' );
+add_action( 'woocommerce_process_shop_order_meta', 'tryl_printful_route_order_on_checkout' );
 
 function lok_bridge_handle_deployment( WP_REST_Request $request ) {
     $file_path = $request->get_param( 'file_path' );

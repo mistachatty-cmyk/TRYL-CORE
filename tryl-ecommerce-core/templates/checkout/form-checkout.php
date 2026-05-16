@@ -71,6 +71,21 @@ if ( ! $checkout->is_registration_enabled() && $checkout->is_registration_requir
             </script>
             <?php endif; ?>
 
+            <?php if ( get_option( 'tryl_order_bump_active' ) === '1' ) : ?>
+            <section class="feature-dashboard order-bump" style="border-color: var(--ry-accent, #31d190); background: rgba(49, 209, 144, 0.05); margin-bottom: 32px;">
+                <div class="feature-item" style="border: none; padding: 0;">
+                    <div>
+                        <span class="feature-label" id="label-bump" style="color: var(--ry-accent, #31d190); font-weight: 800; display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em;">Limited Time Offer</span>
+                        <span style="font-size: 0.85rem; color: var(--txt); font-weight: 500;"><?php echo esc_html( get_option( 'tryl_order_bump_label', 'Add a Premium Sticker Pack for $4.00' ) ); ?></span>
+                    </div>
+                    <label class="nike-switch" for="tryl_order_bump">
+                        <input type="checkbox" id="tryl_order_bump" role="switch" aria-labelledby="label-bump" name="tryl_order_bump" value="1" class="tryl-update-checkout">
+                        <span class="nike-switch-inner" aria-hidden="true" style="background-color: var(--border);"></span>
+                    </label>
+                </div>
+            </section>
+            <?php endif; ?>
+
             <?php if ( $checkout->get_checkout_fields() ) : ?>
                 <?php do_action( 'woocommerce_checkout_before_customer_details' ); ?>
 

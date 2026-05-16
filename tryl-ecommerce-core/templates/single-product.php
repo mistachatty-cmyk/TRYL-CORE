@@ -111,7 +111,6 @@ while ( have_posts() ) :
     @media(max-width: 1024px) { .tryl-sp-layout { grid-template-columns: 1fr; gap: 40px; } }
     
     .tryl-sp-gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
-    .tryl-sp-main-img { grid-column: span 2; background: var(--sp-card); border: 1px solid var(--sp-border); aspect-ratio: 4/5; display: flex; align-items: center; justify-content: center; padding: 32px; position: relative; }
     .tryl-sp-thumb-img { background: var(--sp-card); border: 1px solid var(--sp-border); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; padding: 16px; }
     .tryl-sp-gallery-grid img { width: 100%; height: 100%; object-fit: contain; }
 
