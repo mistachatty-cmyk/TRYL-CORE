@@ -13,12 +13,6 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-// Handle print request for documentation
-if ( isset( $_GET['tryl_print_docs'] ) && $_GET['tryl_print_docs'] == '1' ) {
-    echo tryl_get_printable_documentation();
-    exit;
-}
-
 // ─── ASSET ENQUEUING (Optimization) ──────────────────────────────────────────
 function tryl_core_enqueue_assets() {
     $plugin_url = plugin_dir_url( __FILE__ );
@@ -750,7 +744,7 @@ function tryl_premium_cart_checkout_css() {
         gap: 48px;
         align-items: start;
     }
-    @media (max-width: 600px) {
+    @media (max-width: 900px) {
         .tryl-checkout-grid { grid-template-columns: 1fr; gap: 32px; }
     }
 
@@ -3002,20 +2996,16 @@ function tryl_admin_page_html() {
 </div>
                     </div>
 
-                    <!-- 7. DOCUMENTATION TAB -->
-                    <div id="tab-docs" class="tryl-tab-content">
-                        <div class="tryl-admin-card">
-                            <h2><span class="dashicons dashicons-book"></span> Merchant Support Hub</h2>
-                            <div class="tryl-guide-grid">
-                                <div class="tryl-guide-card">
-                                    <h3>Quick Shortcodes</h3>
-                                    <ul style="list-style: none; padding: 0; font-size: 0.9rem; line-height: 2;">
-                                        <li><code>[tryl_hero]</code> — Entrance</li>
-                                        <li><code>[tryl_3d_shop]</code> — Standard Grid</li>
-                                        <li><code>[tryl_shop_editorial]</code> — Luxury Grid</li>
-                                        <li><code>[tryl_prayer_form]</code> — Interaction</li>
-                                    </ul>
-                                </div>
+<!-- 7. DOCUMENTATION TAB -->
+<div id="tab-docs" class="tryl-tab-content">
+    <div class="tryl-admin-card">
+        <h2>Merchant Support Hub</h2>
+        <button id="tryl-download-pdf" class="button button-secondary" style="margin: 10px 0 20px;" type="button">Download Documentation as PDF</button>
+        <div class="tryl-guide-grid">
+            <?php tryl_documentation_tab_content(); ?>
+        </div>
+    </div>
+</div>
                                 <div class="tryl-guide-card">
                                     <h3>System Maintenance</h3>
                                     <p style="font-size: 0.85rem; line-height: 1.6;">If shop links fail or 404, click the button below to refresh the site routing map.</p>
@@ -3040,48 +3030,56 @@ function tryl_admin_page_html() {
             </div>
         </form>
 
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const navLinks = document.querySelectorAll('.tryl-admin-nav-link');
-                const tabs = document.querySelectorAll('.tryl-tab-content');
-                
-                function switchTab(targetTab) {
-                    // Update Nav
-                    navLinks.forEach(l => {
-                        l.classList.remove('active');
-                        if (l.getAttribute('data-tab') === targetTab) l.classList.add('active');
-                    });
-
-                    // Update Tabs
-                    tabs.forEach(tab => {
-                        tab.classList.remove('active');
-                        if (tab.id === 'tab-' + targetTab) {
-                            tab.classList.add('active');
-                        }
-                    });
-
-                    // Visual feedback with GSAP if available
-                    if (window.gsap) {
-                        gsap.fromTo('#tab-' + targetTab, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
-                    }
-                }
-
-                navLinks.forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const targetTab = this.getAttribute('data-tab');
-                        switchTab(targetTab);
-                    });
-                });
-
-                // Handle direct tab access via URL parameter
-                const urlParams = new URLSearchParams(window.location.search);
-                const initialTab = urlParams.get('tab');
-                if (initialTab) {
-                    switchTab(initialTab);
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const navLinks = document.querySelectorAll('.tryl-admin-nav-link');
+        const tabs = document.querySelectorAll('.tryl-tab-content');
+        
+        function switchTab(targetTab) {
+            // Update Nav
+            navLinks.forEach(l => {
+                l.classList.remove('active');
+                if (l.getAttribute('data-tab') === targetTab) l.classList.add('active');
+            });
+        
+            // Update Tabs
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.id === 'tab-' + targetTab) {
+                    tab.classList.add('active');
                 }
             });
-        </script>
+        
+            // Visual feedback with GSAP if available
+            if (window.gsap) {
+                gsap.fromTo('#tab-' + targetTab, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
+            }
+        }
+        
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetTab = this.getAttribute('data-tab');
+                switchTab(targetTab);
+            });
+        });
+        
+        // Handle direct tab access via URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialTab = urlParams.get('tab');
+        if (initialTab) {
+            switchTab(initialTab);
+        }
+        
+        // Handle PDF download button
+        const pdfButton = document.getElementById('tryl-download-pdf');
+        if (pdfButton) {
+            pdfButton.addEventListener('click', function() {
+                window.print();
+            });
+        }
+    });
+</script>
     </div>
     <?php
 }
@@ -3320,6 +3318,210 @@ function lok_bridge_options_page() {
                                             endif;
 function tryl_documentation_tab_content() {
     ?>
+    <style>
+        /* Print-specific styles */
+        @media print {
+            body { 
+                font-size: 12pt; 
+                line-height: 1.5; 
+                color: #000; 
+                background: #fff; 
+                max-width: none; 
+                margin: 0; 
+                padding: 15mm; 
+            }
+            .no-print, .button, .tryl-admin-nav, .tryl-admin-save-bar { 
+                display: none !important; 
+            }
+            .tryl-admin-card { 
+                box-shadow: none; 
+                border: none; 
+                margin: 0; 
+                padding: 0; 
+            }
+            h1, h2, h3 { 
+                color: #000; 
+                page-break-after: avoid; 
+            }
+            h1 { 
+                font-size: 24pt; 
+                text-align: center; 
+                margin-bottom: 20pt; 
+            }
+            h2 { 
+                font-size: 18pt; 
+                border-bottom: 1px solid #31d190; 
+                padding-bottom: 5pt; 
+                margin-top: 25pt; 
+            }
+            h3 { 
+                font-size: 14pt; 
+                color: #31d190; 
+                margin-top: 20pt; 
+            }
+            ul, ol { 
+                margin-left: 20pt; 
+            }
+            li { 
+                margin: 8pt 0; 
+            }
+            code { 
+                background: #f0f0f0; 
+                padding: 1px 4px; 
+                border-radius: 3px; 
+            }
+            .tryl-url-box { 
+                background: #f8f8f8; 
+                padding: 12pt; 
+                border-radius: 6pt; 
+                margin: 15pt 0; 
+                border: 1px solid #ddd; 
+            }
+            .tryl-url-box strong { 
+                display: block; 
+            }
+            .setup-steps { 
+                margin: 15pt 0; 
+            }
+            .setup-steps ol { 
+                margin-left: 25pt; 
+            }
+            .setup-steps li { 
+                margin: 6pt 0; 
+            }
+            .footer { 
+                text-align: center; 
+                margin-top: 30pt; 
+                color: #666; 
+                font-size: 10pt; 
+            }
+            /* Avoid breaking elements across pages */
+            .tryl-guide-card { 
+                page-break-inside: avoid; 
+                margin-bottom: 20pt; 
+            }
+        }
+    </style>
+    <div class="tryl-guide-card">
+        <h3>Quick Shortcodes</h3>
+        <ul style="list-style: none; padding: 0; font-size: 0.9rem; line-height: 2;">
+            <li><code>[tryl_hero]</code> — Entrance</li>
+            <li><code>[tryl_3d_shop]</code> — Standard Grid</li>
+            <li><code>[tryl_shop_editorial]</code> — Luxury Grid</li>
+            <li><code>[tryl_prayer_form]</code> — Interaction</li>
+        </ul>
+    </div>
+    <div class="tryl-guide-card">
+        <h3>System Maintenance</h3>
+        <p style="font-size: 0.85rem; line-height: 1.6;">If shop links fail or 404, click the button below to refresh the site routing map.</p>
+        <a href="options-permalink.php" class="button button-primary">Flush Permalinks</a>
+    </div>
+    <div class="tryl-guide-card">
+        <h3>Essential Site URLs</h3>
+        <div class="tryl-url-box">
+            <strong>Shop:</strong> <?php echo esc_html(get_option('tryl_nav_shop', home_url('/shop/'))); ?><br>
+            <strong>Cart:</strong> <?php echo esc_html(function_exists('wc_get_cart_url') ? wc_get_cart_url() : home_url('/cart/')); ?><br>
+            <strong>Checkout:</strong> <?php echo esc_html(get_option('tryl_nav_checkout', home_url('/checkout/'))); ?>
+        </div>
+    </div>
+    <div class="tryl-guide-card">
+        <h3>Printful Integration Guide</h3>
+        <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Automated Product Sync:</strong> Automatically imports products from Printful to WooCommerce. Configure in Integrations tab → Printful Synchronization.</p>
+        <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Real-Time Inventory:</strong> Keep stock levels synchronized to prevent overselling. Enable Real-Time Inventory Sync for webhook-based updates.</p>
+        <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Smart Order Routing:</strong> Automatically send orders to Printful based on rules (product type, location, shipping method, order value). Configure in Integrations tab → Printful Order Routing.</p>
+        <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Manual Order Control:</strong> Override automatic routing per-order from the order edit screen when Manual Override is enabled.</p>
+        <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Status Synchronization:</strong> Printful order status updates automatically update WooCommerce order status.</p>
+        <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Setup Steps:</strong></p>
+        <ol style="font-size: 0.85rem; line-height: 1.6; margin-left: 20px;">
+            <li>Enter your Printful API token in Integrations tab</li>
+            <li>Enable Printful Synchronization and configure schedule</li>
+            <li>Enable Real-Time Inventory Sync (recommended)</li>
+            <li>Configure Order Routing rules as needed</li>
+            <li>Save changes and let the system run automatically</li>
+        </ol>
+    </div>
+    <div class="tryl-guide-card">
+        <h3>Shop Features</h3>
+        <p style="font-size: 0.85rem; line-height: 1.6;"><strong>3D Product Tilt:</strong> Products respond to mouse movement with subtle tilt effect</p>
+        <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Inline Variant Selection:</strong> Select size/color directly on product cards (no page reload)</p>
+        <p style="font-size: 0.85rem; line-height: 1.6;"><strong>AJAX Add to Cart:</strong> Items add instantly with mini-cart animation</p>
+        <p style="font-size: 0.85rem; line-height: 1.6;"><strong>GSAP Animations:</strong> Smooth transitions throughout the shopping experience</p>
+        <p style="font-size: 0.85rem; line-height: 1.6;"><strong>Theme System:</strong> Bright/Mild/Dark modes with automatic OS detection</p>
+    </div>
+    <?php
+}
+            .no-print, .button, .tryl-admin-nav, .tryl-admin-save-bar { 
+                display: none !important; 
+            }
+            .tryl-admin-card { 
+                box-shadow: none; 
+                border: none; 
+                margin: 0; 
+                padding: 0; 
+            }
+            h1, h2, h3 { 
+                color: #000; 
+                page-break-after: avoid; 
+            }
+            h1 { 
+                font-size: 24pt; 
+                text-align: center; 
+                margin-bottom: 20pt; 
+            }
+            h2 { 
+                font-size: 18pt; 
+                border-bottom: 1px solid #31d190; 
+                padding-bottom: 5pt; 
+                margin-top: 25pt; 
+            }
+            h3 { 
+                font-size: 14pt; 
+                color: #31d190; 
+                margin-top: 20pt; 
+            }
+            ul, ol { 
+                margin-left: 20pt; 
+            }
+            li { 
+                margin: 8pt 0; 
+            }
+            code { 
+                background: #f0f0f0; 
+                padding: 1px 4px; 
+                border-radius: 3px; 
+            }
+            .tryl-url-box { 
+                background: #f8f8f8; 
+                padding: 12pt; 
+                border-radius: 6pt; 
+                margin: 15pt 0; 
+                border: 1px solid #ddd; 
+            }
+            .tryl-url-box strong { 
+                display: block; 
+            }
+            .setup-steps { 
+                margin: 15pt 0; 
+            }
+            .setup-steps ol { 
+                margin-left: 25pt; 
+            }
+            .setup-steps li { 
+                margin: 6pt 0; 
+            }
+            .footer { 
+                text-align: center; 
+                margin-top: 30pt; 
+                color: #666; 
+                font-size: 10pt; 
+            }
+            /* Avoid breaking elements across pages */
+            .tryl-guide-card { 
+                page-break-inside: avoid; 
+                margin-bottom: 20pt; 
+            }
+        }
+    </style>
     <div class="tryl-guide-card">
         <h3>Quick Shortcodes</h3>
         <ul style="list-style: none; padding: 0; font-size: 0.9rem; line-height: 2;">
@@ -3369,170 +3571,7 @@ function tryl_documentation_tab_content() {
     <?php
 }
 
-function tryl_get_printable_documentation() {
-    ob_start();
-    ?>
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>TRYL Documentation</title>
-        <style>
-            body { font-family: 'Inter', sans-serif; line-height: 1.6; color: #0d1b0f; max-width: 800px; margin: 40px auto; padding: 20px; }
-            h1, h2, h3 { color: #0d1b0f; }
-            h1 { text-align: center; font-size: 2.2rem; margin-bottom: 30px; }
-            h2 { font-size: 1.5rem; border-bottom: 2px solid #31d190; padding-bottom: 10px; margin-top: 30px; }
-            h3 { font-size: 1.2rem; color: #31d190; margin-top: 25px; }
-            ul { list-style: none; padding: 0; }
-            li { margin: 10px 0; }
-            code { background: #f5f8f5; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
-            .tryl-url-box { background: #f5f8f5; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .tryl-url-box strong { display: block; }
-            .setup-steps { margin: 20px 0; }
-            .setup-steps ol { margin-left: 20px; }
-            .setup-steps li { margin: 10px 0; }
-            .footer { text-align: center; margin-top: 40px; color: #6b7c6b; font-size: 0.9rem; }
-            @media print {
-                body { margin: 20px; }
-                .no-print { display: none; }
-            }
-        </style>
-    </head>
-    <body>
-        <h1>TRYL Ecosystem Documentation</h1>
-        
-        <div class="no-print" style="text-align: center; margin-bottom: 30px;">
-            <p>Press Ctrl+P (or Cmd+P) to print or save as PDF</p>
-        </div>
-        
-        <section>
-            <h2>Quick Shortcodes</h2>
-            <ul>
-                <li><code>[tryl_hero]</code> — Entrance</li>
-                <li><code>[tryl_3d_shop]</code> — Standard Grid</li>
-                <li><code>[tryl_shop_editorial]</code> — Luxury Grid</li>
-                <li><code>[tryl_prayer_form]</code> — Interaction</li>
-            </ul>
-        </section>
-        
-        <section>
-            <h2>System Maintenance</h2>
-            <p>If shop links fail or 404, click the button below to refresh the site routing map.</p>
-            <p><a href="options-permalink.php">Flush Permalinks</a></p>
-        </section>
-        
-        <section>
-            <h2>Essential Site URLs</h2>
-            <div class="tryl-url-box">
-                <strong>Shop:</strong> <?php echo esc_html(get_option('tryl_nav_shop', home_url('/shop/'))); ?><br>
-                <strong>Cart:</strong> <?php echo esc_html(function_exists('wc_get_cart_url') ? wc_get_cart_url() : home_url('/cart/')); ?><br>
-                <strong>Checkout:</strong> <?php echo esc_html(get_option('tryl_nav_checkout', home_url('/checkout/'))); ?>
-            </div>
-        </section>
-        
-        <section>
-            <h2>Printful Integration Guide</h2>
-            <p><strong>Automated Product Sync:</strong> Automatically imports products from Printful to WooCommerce. Configure in Integrations tab → Printful Synchronization.</p>
-            <p><strong>Real-Time Inventory:</strong> Keep stock levels synchronized to prevent overselling. Enable Real-Time Inventory Sync for webhook-based updates.</p>
-            <p><strong>Smart Order Routing:</strong> Automatically send orders to Printful based on rules (product type, location, shipping method, order value). Configure in Integrations tab → Printful Order Routing.</p>
-            <p><strong>Manual Order Control:</strong> Override automatic routing per-order from the order edit screen when Manual Override is enabled.</p>
-            <p><strong>Status Synchronization:</strong> Printful order status updates automatically update WooCommerce order status.</p>
-            <h3>Setup Steps:</h3>
-            <ol class="setup-steps">
-                <li>Enter your Printful API token in Integrations tab</li>
-                <li>Enable Printful Synchronization and configure schedule</li>
-                <li>Enable Real-Time Inventory Sync (recommended)</li>
-                <li>Configure Order Routing rules as needed</li>
-                <li>Save changes and let the system run automatically</li>
-            </ol>
-        </section>
-        
-        <section>
-            <h2>Shop Features</h2>
-            <p><strong>3D Product Tilt:</strong> Products respond to mouse movement with subtle tilt effect</p>
-            <p><strong>Inline Variant Selection:</strong> Select size/color directly on product cards (no page reload)</p>
-            <p><strong>AJAX Add to Cart:</strong> Items add instantly with mini-cart animation</p>
-            <p><strong>GSAP Animations:</strong> Smooth transitions throughout the shopping experience</p>
-            <p><strong>Theme System:</strong> Bright/Mild/Dark modes with automatic OS detection</p>
-        </section>
-        
-        <div class="footer">
-            Documentation generated by TRYL Premium E-Commerce Core
-        </div>
-    </body>
-    </html>
-    <?php
-    return ob_get_clean();
-}
 
-?>
-                                        ?>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-        </div>
-    </div>
-    <?php
-}
-}
-
-add_action( 'rest_api_init', function () {
-    register_rest_route( 'lokservices/v1', '/deploy', array(
-        'methods'             => 'POST',
-        'callback'            => 'lok_bridge_handle_deployment',
-        'permission_callback' => 'lok_bridge_check_auth'
-    ) );
-} );
-
-function lok_bridge_check_auth( WP_REST_Request $request ) {
-    $client_ip = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0] : $_SERVER['REMOTE_ADDR'];
-
-    // Commercial Upgrade: IP Whitelist Check
-    $whitelist = get_option( 'lokservices_ip_whitelist' );
-    if ( ! empty( $whitelist ) ) {
-        $allowed_ips = array_map( 'trim', explode( ',', $whitelist ) );
-        if ( ! in_array( trim($client_ip), $allowed_ips ) ) {
-            lok_bridge_log_event( 'N/A', 'Blocked (IP Not Whitelisted)', $client_ip );
-            return new WP_Error( 'forbidden', 'Deployment IP not whitelisted.', array( 'status' => 403 ) );
-        }
-    }
-
-    $provided_key = $request->get_header( 'X-Lok-Key' );
-    $stored_key   = get_option( 'lokservices_api_key' );
-
-    if ( empty( $stored_key ) || $provided_key !== $stored_key ) {
-        lok_bridge_log_event( 'N/A', 'Failed (Invalid API Key)', $client_ip );
-        return new WP_Error( 'forbidden', 'Invalid or missing LokServices API Key.', array( 'status' => 403 ) );
-    }
-
-    return true;
-}
-
-if ( ! function_exists( 'lok_bridge_log_event' ) ) {
-function lok_bridge_log_event( $file_path, $status, $ip ) {
-    $log = get_option( 'lokservices_audit_log', [] );
-    if ( ! is_array( $log ) ) $log = [];
-    array_unshift( $log, [
-        'time'   => current_time( 'mysql' ),
-        'file'   => sanitize_text_field( $file_path ),
-        'status' => sanitize_text_field( $status ),
-        'ip'     => sanitize_text_field( $ip )
-    ] );
-    // Keep only the last 100 deployments to prevent database bloat
-    $log = array_slice( $log, 0, 100 );
-    update_option( 'lokservices_audit_log', $log );
-    
-    // Send email alert if enabled and the deployment was unsuccessful
-    if ( get_option('lokservices_enable_alerts') === '1' && (strpos($status, 'Failed') !== false || strpos($status, 'Blocked') !== false) ) {
-        $site_name = get_bloginfo('name');
-        wp_mail( get_option('admin_email'), "[$site_name] LokServices Security Alert", "A deployment attempt returned the following status:\n\nStatus: $status\nFile: $file_path\nIP: $ip\nTime: " . current_time('mysql') );
-    }
-}
-}
 
 // ─── PRINTFUL INTEGRATION ───
 if ( ! function_exists( 'tryl_printful_api_request' ) ) {
