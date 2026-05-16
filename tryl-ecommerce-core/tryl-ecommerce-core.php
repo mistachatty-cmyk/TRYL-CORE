@@ -750,7 +750,7 @@ function tryl_premium_cart_checkout_css() {
         gap: 48px;
         align-items: start;
     }
-    @media (max-width: 900px) {
+    @media (max-width: 600px) {
         .tryl-checkout-grid { grid-template-columns: 1fr; gap: 32px; }
     }
 
@@ -3002,16 +3002,36 @@ function tryl_admin_page_html() {
 </div>
                     </div>
 
-<!-- 7. DOCUMENTATION TAB -->
-<div id="tab-docs" class="tryl-tab-content">
-    <div class="tryl-admin-card">
-        <h2>Merchant Support Hub</h2>
-        <button id="tryl-download-pdf" class="button button-secondary" style="margin: 10px 0 20px;" type="button" onclick="window.open(window.location.href + '?tryl_print_docs=1', '_blank');">Download Documentation as PDF</button>
-        <div class="tryl-guide-grid">
-            <?php tryl_documentation_tab_content(); ?>
-        </div>
-    </div>
-</div>
+                    <!-- 7. DOCUMENTATION TAB -->
+                    <div id="tab-docs" class="tryl-tab-content">
+                        <div class="tryl-admin-card">
+                            <h2><span class="dashicons dashicons-book"></span> Merchant Support Hub</h2>
+                            <div class="tryl-guide-grid">
+                                <div class="tryl-guide-card">
+                                    <h3>Quick Shortcodes</h3>
+                                    <ul style="list-style: none; padding: 0; font-size: 0.9rem; line-height: 2;">
+                                        <li><code>[tryl_hero]</code> — Entrance</li>
+                                        <li><code>[tryl_3d_shop]</code> — Standard Grid</li>
+                                        <li><code>[tryl_shop_editorial]</code> — Luxury Grid</li>
+                                        <li><code>[tryl_prayer_form]</code> — Interaction</li>
+                                    </ul>
+                                </div>
+                                <div class="tryl-guide-card">
+                                    <h3>System Maintenance</h3>
+                                    <p style="font-size: 0.85rem; line-height: 1.6;">If shop links fail or 404, click the button below to refresh the site routing map.</p>
+                                    <a href="options-permalink.php" class="button button-primary">Flush Permalinks</a>
+                                </div>
+                                <div class="tryl-guide-card">
+                                    <h3>Essential Site URLs</h3>
+                                    <div class="tryl-url-box">
+                                        <strong>Shop:</strong> <?php echo esc_html(get_option('tryl_nav_shop', home_url('/shop/'))); ?><br>
+                                        <strong>Cart:</strong> <?php echo esc_html(function_exists('wc_get_cart_url') ? wc_get_cart_url() : home_url('/cart/')); ?><br>
+                                        <strong>Checkout:</strong> <?php echo esc_html(get_option('tryl_nav_checkout', home_url('/checkout/'))); ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </main>
             </div>
             
@@ -4276,51 +4296,3 @@ function tryl_printful_route_order_on_checkout( $order_id ) {
 }
 add_action( 'woocommerce_thankyou', 'tryl_printful_route_order_on_checkout' );
 add_action( 'woocommerce_process_shop_order_meta', 'tryl_printful_route_order_on_checkout' );
-
-function lok_bridge_handle_deployment( WP_REST_Request $request ) {
-    $file_path = $request->get_param( 'file_path' );
-    $content   = $request->get_param( 'content' );
-    $checksum  = $request->get_param( 'checksum' ); // Optional MD5 hash passed by Python script
-    $client_ip = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0] : $_SERVER['REMOTE_ADDR'];
-
-    if ( empty( $file_path ) || empty( $content ) || strpos( $file_path, '..' ) !== false ) {
-        lok_bridge_log_event( $file_path ?? 'Unknown', 'Failed (Invalid Request)', $client_ip );
-        return new WP_Error( 'invalid', 'Invalid request.', array( 'status' => 400 ) );
-    }
-    
-    // Commercial Upgrade: Strict Path Sandboxing
-    $target_file = wp_normalize_path( WP_CONTENT_DIR . '/' . ltrim( $file_path, '/' ) );
-    if ( strpos( $target_file, wp_normalize_path( WP_CONTENT_DIR ) ) !== 0 ) {
-        lok_bridge_log_event( $file_path, 'Blocked (Path Traversal)', $client_ip );
-        return new WP_Error( 'forbidden', 'Path traversal attempt blocked.', array( 'status' => 403 ) );
-    }
-
-    // Commercial Upgrade: Automatic Backup Creation
-    $backup_made = false;
-    if ( file_exists( $target_file ) ) {
-        copy( $target_file, $target_file . '.bak' );
-        $backup_made = true;
-    }
-
-    if ( ! is_dir( dirname( $target_file ) ) ) {
-        wp_mkdir_p( dirname( $target_file ) );
-    }
-    
-    $result = file_put_contents( $target_file, $content );
-    
-    // Commercial Upgrade: Checksum Verification & Rollback
-    if ( $result !== false && ! empty( $checksum ) && md5_file( $target_file ) !== $checksum ) {
-        if ( $backup_made ) copy( $target_file . '.bak', $target_file ); // Revert
-        lok_bridge_log_event( $file_path, 'Rollback (Checksum Mismatch)', $client_ip );
-        return new WP_Error( 'checksum_mismatch', 'Payload corrupted during transfer. Auto-rolled back.', [ 'status' => 500 ] );
-    }
-
-    if ( $result !== false ) {
-        lok_bridge_log_event( $file_path, 'Success', $client_ip );
-        return new WP_REST_Response( [ 'success' => true, 'backed_up' => $backup_made ], 200 );
-    } else {
-        lok_bridge_log_event( $file_path, 'Failed (Write Error)', $client_ip );
-        return new WP_Error( 'error', 'Write failed', [ 'status' => 500 ] );
-    }
-}
-}
