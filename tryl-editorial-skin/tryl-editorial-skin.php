@@ -218,6 +218,7 @@ function tryl_editorial_shop_shortcode( $atts ) {
     .te-card-arrow:hover{background:var(--te-ink);border-color:var(--te-ink);color:var(--te-cream);}
     .te-card-arrow svg{width:14px;height:14px;}
 
+    @keyframes trylFadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
     /* ── Featured large card (first item) ── */
     .te-card.te-featured{grid-column:span 1;}
     @media(min-width:960px){.te-card.te-featured{grid-column:span 1;}}
@@ -286,6 +287,31 @@ function tryl_editorial_shop_shortcode( $atts ) {
             $cat_cls   = ! empty($cat_slugs) ? 'cat-'.implode(' cat-',$cat_slugs) : '';
             $on_sale   = $product->is_on_sale();
             
+            $available_variations = [];
+            $swatches = [];
+            if ( $is_var && $is_in_stock ) {
+                $available_variations = $product->get_available_variations();
+                foreach ( $available_variations as $var ) {
+                    if ( ! $var['is_in_stock'] || ! $var['is_purchasable'] ) continue;
+                    foreach ( $var['attributes'] as $attr_name => $attr_val ) {
+                        if ( strpos( strtolower($attr_name), 'color' ) !== false && ! empty($attr_val) ) {
+                            if ( ! isset( $swatches[$attr_val] ) ) {
+                                $term = get_term_by('slug', $attr_val, str_replace('attribute_', '', $attr_name));
+                                $name = $term ? $term->name : ucfirst(str_replace('-', ' ', $attr_val));
+                                $hex = $term ? get_term_meta( $term->term_id, 'color', true ) : '';
+                                if ( empty($hex) ) $hex = $attr_val;
+                                $swatch_img = isset($var['image']['src']) && !empty($var['image']['src']) ? $var['image']['src'] : $img;
+                                $swatches[$attr_val] = [
+                                    'name' => $name,
+                                    'hex' => $hex,
+                                    'img' => $swatch_img
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+
             $badge_text = '';
             $is_dynamic_badge = false;
             $badge_class = 'te-badge';
@@ -346,6 +372,19 @@ function tryl_editorial_shop_shortcode( $atts ) {
               <a href="<?php echo esc_url($purl); ?>" class="te-card-name">
                 <?php echo esc_html($product->get_name()); ?>
               </a>
+              
+              <?php if ( ! empty($swatches) ) : ?>
+              <div class="te-card-swatches" style="display:flex; gap:6px; margin-bottom:12px;">
+                  <?php foreach ( $swatches as $swatch ) : 
+                      $bg = strtolower($swatch['hex']);
+                      $css_colors = ['black'=>'#000','white'=>'#fff','red'=>'#d63638','blue'=>'#2271b1','green'=>'#007017','yellow'=>'#f0b849','navy'=>'#000080','gray'=>'#8c8f94','grey'=>'#8c8f94','pink'=>'#e51573','purple'=>'#8224e3','orange'=>'#d94f4f','tan'=>'#d2b48c','olive'=>'#808000','brown'=>'#a52a2a'];
+                      if ( isset($css_colors[$bg]) ) $bg = $css_colors[$bg];
+                  ?>
+                  <div class="te-swatch" data-img="<?php echo esc_url($swatch['img']); ?>" title="<?php echo esc_attr($swatch['name']); ?>" style="width:14px; height:14px; border-radius:50%; border:1px solid var(--te-sand); background:<?php echo esc_attr($bg); ?>; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;"></div>
+                  <?php endforeach; ?>
+              </div>
+              <?php endif; ?>
+
               <div class="te-card-footer">
                 <div class="te-card-price"><?php echo wp_kses_post($product->get_price_html()); ?></div>
                 <div class="te-card-footer-actions">
@@ -353,17 +392,15 @@ function tryl_editorial_shop_shortcode( $atts ) {
                   <button class="tryl-atc te-atc disabled" disabled style="opacity:0.5;cursor:not-allowed;">
                     <span>Out of Stock</span>
                   </button>
-                  <?php elseif($is_var): 
-                      $available_variations = $product->get_available_variations();
-                  ?>
+                  <?php elseif($is_var): ?>
                   <div class="tryl-inline-var-wrapper" style="position:relative;">
                     <button class="tryl-atc te-atc te-atc-choose tryl-atc-inline-toggle" type="button">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
                       <span>Size</span>
                     </button>
-                    <div class="tryl-inline-var-dropdown" style="display:none; position:absolute; bottom:calc(100% + 8px); right:0; background:var(--te-card); border:1px solid var(--te-sand); box-shadow:0 8px 24px rgba(0,0,0,0.1); z-index:100; padding:8px; border-radius:8px; min-width:140px;">
-                        <div style="font-size:0.6rem; color:var(--te-stone); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid var(--te-sand); text-align:center;">Select Option</div>
-                        <div style="display:flex; flex-direction:column; gap:4px; max-height:200px; overflow-y:auto;">
+                    <div class="tryl-inline-var-dropdown" style="display:none; position:absolute; bottom:calc(100% + 12px); right:0; background:var(--te-card); border:1px solid var(--te-sand); box-shadow:0 12px 36px rgba(0,0,0,0.15); z-index:100; padding:16px; border-radius:12px; min-width:220px; transform-origin:bottom right;">
+                        <div style="font-size:0.6rem; font-weight:800; color:var(--te-stone); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px; text-align:center;">Select Size</div>
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(44px, 1fr)); gap:8px; max-height:240px; overflow-y:auto; padding-right:4px;">
                         <?php 
                         $has_in_stock = false;
                         foreach ( $available_variations as $var ) : 
@@ -376,7 +413,7 @@ function tryl_editorial_shop_shortcode( $atts ) {
                             }
                             $label = implode(' / ', $attr_vals) ?: 'Option';
                         ?>
-                            <button class="te-atc-variation tryl-atc-variation" data-pid="<?php echo $pid; ?>" data-vid="<?php echo $var['variation_id']; ?>" type="button" style="width:100%; text-align:left; padding:8px 12px; background:var(--te-cream); border:1px solid var(--te-sand); cursor:pointer; font-family:'Inter',sans-serif; font-size:0.7rem; font-weight:600; text-transform:uppercase; color:var(--te-ink); transition:all 0.2s; border-radius:6px;">
+                            <button class="te-atc-variation tryl-atc-variation" data-pid="<?php echo $pid; ?>" data-vid="<?php echo $var['variation_id']; ?>" type="button" style="padding:10px 4px; background:var(--te-cream); border:1px solid var(--te-sand); cursor:pointer; font-family:'Inter',sans-serif; font-size:0.75rem; font-weight:700; text-transform:uppercase; color:var(--te-ink); transition:all 0.2s; border-radius:6px; text-align:center; display:flex; align-items:center; justify-content:center;">
                                 <?php echo esc_html( $label ); ?>
                             </button>
                         <?php endforeach; 
@@ -542,6 +579,26 @@ function tryl_editorial_shop_shortcode( $atts ) {
               { opacity: 1, y: 0, stagger: .06, duration: .4, ease: 'power3.out', clearProps: 'transform,opacity' }
             );
           }
+        });
+      });
+
+      // ── 7. SWATCH HOVER IMAGES
+      document.querySelectorAll('.te-swatch').forEach(sw => {
+        sw.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var imgUrl = this.dataset.img;
+            if (imgUrl) {
+                var card = this.closest('.te-card');
+                var cardImg = card.querySelector('.te-card-img img');
+                if (cardImg) {
+                    cardImg.src = imgUrl;
+                    var swatches = card.querySelectorAll('.te-swatch');
+                    swatches.forEach(s => { s.style.transform = 'scale(1)'; s.style.boxShadow = 'none'; });
+                    this.style.transform = 'scale(1.2)';
+                    this.style.boxShadow = '0 0 0 1.5px var(--te-ink)';
+                }
+            }
         });
       });
 
