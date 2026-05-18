@@ -70,7 +70,10 @@ archive.on('error', (err) => { throw err; });
 
 archive.pipe(output);
 
-// Append files from the source directory, placing them inside a folder named after the plugin slug
-archive.directory(sourceDir, pluginFolder);
+// Append files from the source directory, placing them inside a folder named after the plugin slug, ignoring node_modules and version control meta
+archive.glob('**/*', {
+    cwd: sourceDir,
+    ignore: ['node_modules/**', '.git/**', '.github/**', '*.zip', '.env']
+}, { prefix: pluginFolder });
 
 archive.finalize();

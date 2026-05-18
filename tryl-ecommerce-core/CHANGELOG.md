@@ -2,6 +2,14 @@ C:\Users\glory\.gemini\antigravity\scratch\tryl-ecommerce-core\tryl-ecommerce-co
 
 All notable changes to the TRYL Premium E-Commerce Core will be documented here.
 
+## [3.16.0]
+
+### Added
+- **Nike-Inspired Sizing Grid Interactions:** Built standard size selectors that either morph inline or slide out sleekly from the bottom as a modular drawer with custom exit triggers.
+- **Micro-Animation Success Feedbacks:** Added green glow pulses, physical elastic element scaling, and RPG floating text number ticks for real-time validation.
+- **Integrated Mini-Cart Drawer Transition:** Made the cart sliding tray trigger natively on selection completion for optimal conversion rates.
+- Public Order Tracker (Beta): Added the `[tryl_order_tracker]` shortcode and native Gutenberg block. This renders a highly stylized tracker where customers can input their Order ID and Billing Email to retrieve their live visual shipping timeline securely without needing to log in.
+
 ## [3.15.0]
 
 ### Added
@@ -13,6 +21,7 @@ All notable changes to the TRYL Premium E-Commerce Core will be documented here.
 - Gutenberg Block Suite Completion (Phase 6): Officially bridged the Prayer System (both the Form and the Public Wall) into the React-powered Gutenberg environment. Clients can now drag-and-drop the Prayer Wall into pages and see live masonry grid previews securely in the backend.
 
 ## [3.13.0]
+ Def## [3.13.0]
 
 ### Added / Optimized
 - Native Welcome Automations (CRM): You can now automatically fire an instant Welcome Email and Welcome SMS (via Twilio) the moment someone subscribes to your newsletter list!
@@ -127,3 +136,4 @@ All notable changes to the TRYL Premium E-Commerce Core will be documented here.
 
 ### Fixed
 - Added `class_exists( 'WooCommerce' )` checks to gracefully handle missing/deactivated WooCommerce plugin without throwing fatal PHP errors.
+- Added `class_exists( 'WooCommerce' )` checks to gracefully handle missing/deactivated WooCommerce plugin without throwing fatal PHP errorse

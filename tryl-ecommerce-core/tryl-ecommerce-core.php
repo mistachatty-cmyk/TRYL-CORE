@@ -2,10 +2,11 @@
 /**
  * Plugin Name: TRYL Premium E-Commerce Core Universal
  * Description: All-in-one TRYL shop engine. Nike-inspired product pages, premium cart/checkout, and global nav enhancement.
- * Version: 3.15
+ * Version: 3.16
  * Author: EHDesigns | Powered by LokServices
  * 
  * CHANGELOG:
+ * 3.16 - Added Premium Nike-Inspired inline sizing grid morphs, slide-out size drawers, interactive feedbacks, and mini-cart slide triggers.
  * 3.15 - Added Customer Order Progress Visualizer to the WooCommerce My Account dashboard.
  * 3.14 - Gutenberg Suite Completion: Wrapped the Prayer Request Form and Prayer Wall into native visual blocks.
  * 3.13 - Added Native Welcome CRM Automations (Email/SMS) and deep customization for opt-in messaging.
