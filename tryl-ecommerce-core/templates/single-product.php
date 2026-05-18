@@ -223,6 +223,13 @@ while ( have_posts() ) :
         color: white;
     }
 
+    /* Nike-style Size Boxes */
+    .tryl-sp-size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-top: 8px; margin-bottom: 24px; }
+    .tryl-sp-size-btn { background: var(--sp-card); border: 1px solid var(--sp-border); color: var(--sp-text); padding: 14px 10px; font-family: var(--tryl-body-font, 'Inter', sans-serif); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; cursor: pointer; border-radius: 4px; transition: all 0.2s; }
+    .tryl-sp-size-btn:hover { border-color: var(--sp-text); }
+    .tryl-sp-size-btn.active { border-color: var(--sp-text); box-shadow: 0 0 0 1px var(--sp-text); }
+    .tryl-sp-size-label { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+
     /* WooCommerce Tabs & Related Products */
     .woocommerce-tabs ul.tabs { display: flex; gap: 24px; list-style: none; padding: 0; margin: 0 0 32px 0; border-bottom: 2px solid var(--sp-border); }
     .woocommerce-tabs ul.tabs li { margin: 0; padding: 0 0 12px 0; border-bottom: 2px solid transparent; margin-bottom: -2px; }
@@ -285,11 +292,11 @@ while ( have_posts() ) :
                 <?php if ( get_option('tryl_sp_trust_badges_active', '1') === '1' ) : ?>
                 <div class="tryl-sp-trust-badges" style="margin-top: 32px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
                     <div style="background: var(--sp-card); border: 1px solid var(--sp-border); padding: 16px; border-radius: 8px; display: flex; align-items: center; gap: 12px;">
-                        <span class="dashicons dashicons-shield" style="color: var(--sp-accent); font-size: 20px; width: 20px; height: 20px;"></span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--sp-btn-bg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                         <div style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sp-text);">Secure Checkout</div>
                     </div>
                     <div style="background: var(--sp-card); border: 1px solid var(--sp-border); padding: 16px; border-radius: 8px; display: flex; align-items: center; gap: 12px;">
-                        <span class="dashicons dashicons-admin-site-alt3" style="color: var(--sp-accent); font-size: 20px; width: 20px; height: 20px;"></span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--sp-btn-bg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                         <div style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sp-text);">Global Shipping</div>
                     </div>
                 </div>
@@ -406,6 +413,110 @@ while ( have_posts() ) :
                 { opacity: 1, x: 0, duration: 0.8, stagger: 0.08, ease: "power3.out", delay: 0.2 }
             );
         }
+    });
+    
+    // ── VARIATION IMAGE SWAP & AJAX ADD TO CART ──
+    if (typeof jQuery !== 'undefined') {
+        jQuery('.variations_form').on('show_variation', function(event, variation) {
+            if (variation.image && variation.image.src && variation.image.src.length > 1) {
+                var mainImg = document.querySelector('.tryl-sp-main-img img');
+                if (mainImg) {
+                    mainImg.src = variation.image.src;
+                    if (variation.image.srcset) mainImg.srcset = variation.image.srcset;
+                    if (typeof gsap !== 'undefined') {
+                        gsap.fromTo(mainImg, { opacity: 0.5, scale: 0.98 }, { opacity: 1, scale: 1, duration: 0.4, ease: "power2.out" });
+                    }
+                }
+            }
+        });
+        jQuery('.variations_form').on('reset_image', function() {
+            var mainImg = document.querySelector('.tryl-sp-main-img img');
+            if (mainImg && mainImg.dataset.o_src) {
+                mainImg.src = mainImg.dataset.o_src;
+                mainImg.srcset = '';
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+        const cartForm = document.querySelector('form.cart');
+        if (cartForm) {
+            cartForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const btn = this.querySelector('button[type="submit"]');
+                if (!btn || btn.classList.contains('loading')) return;
+                
+                const ogText = btn.innerText;
+                btn.classList.add('loading');
+                btn.innerText = 'Adding...';
+                
+                const formData = new FormData(this);
+                formData.append('add-to-cart', btn.value || this.querySelector('[name="add-to-cart"]')?.value || '<?php echo esc_js($product_id); ?>');
+                
+                fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'Accept': 'text/html' }
+                })
+                .then(response => {
+                    btn.classList.remove('loading');
+                    if (typeof window.trylOpenCart === 'function') window.trylOpenCart();
+                    btn.innerText = window.trylMiniCart ? window.trylMiniCart.btnText : 'Added!';
+                    setTimeout(() => { btn.innerText = ogText; }, 2500);
+                })
+                .catch(err => {
+                    btn.classList.remove('loading');
+                    btn.innerText = 'Error';
+                    setTimeout(() => { btn.innerText = ogText; }, 2000);
+                });
+            });
+        }
+
+    // Convert WooCommerce Select Dropdowns to Nike-Style Buttons
+    const selects = document.querySelectorAll('form.cart .variations select');
+    selects.forEach(select => {
+        const wrapper = select.parentNode;
+        
+        // Add a clean label
+        const labelEl = wrapper.previousElementSibling;
+        let labelText = 'Select Option';
+        if (labelEl && labelEl.tagName === 'LABEL') {
+            labelText = labelEl.textContent;
+            labelEl.style.display = 'none'; // hide standard woo label
+        }
+        
+        const title = document.createElement('div');
+        title.className = 'tryl-sp-size-label';
+        title.innerHTML = `<span>${labelText}</span>`;
+        wrapper.insertBefore(title, select);
+
+        const grid = document.createElement('div');
+        grid.className = 'tryl-sp-size-grid';
+        
+        Array.from(select.options).forEach(option => {
+            if(option.value === '') return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'tryl-sp-size-btn';
+            btn.textContent = option.text;
+            
+            btn.addEventListener('click', () => {
+                grid.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                select.value = option.value;
+                jQuery(select).trigger('change');
+            });
+            grid.appendChild(btn);
+        });
+        
+        wrapper.insertBefore(grid, select);
+        select.style.display = 'none';
+        
+        jQuery('.variations_form').on('reset_data', function() {
+            grid.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        });
+    });
     });
 </script>
 

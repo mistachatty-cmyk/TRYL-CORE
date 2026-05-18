@@ -2,10 +2,11 @@
 /**
  * Plugin Name: TRYL Premium E-Commerce Core Universal
  * Description: All-in-one TRYL shop engine. Nike-inspired product pages, premium cart/checkout, and global nav enhancement.
- * Version: 3.18
+ * Version: 3.19
  * Author: EHDesigns | Powered by LokServices
  * 
  * CHANGELOG:
+ * 3.19 - Implemented selectable GSAP feedback animations for Add to Cart (Glow, Scale, Bounce).
  * 3.18 - Added Shop Grid Columns configuration setting to the dashboard.
  * 3.17 - Fixed critical JS bugs in the morphing ATC button and unified the Quick Add UX.
  * 3.16 - Added Public Order Tracker (Beta) shortcode and Gutenberg block.
@@ -79,21 +80,24 @@ function tryl_global_fonts() {
         $fonts_url = 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Inter:wght@300;400;500;600;700&display=swap';
         if ($pack === 'editorial') {
             $fonts_url = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600;700&display=swap';
-        $h_font = "'Cormorant Garamond', serif";
-    } elseif ($pack === 'technical') {
-        $fonts_url = 'https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Roboto:wght@300;400;500;700&display=swap';
-        $h_font = "'Oswald', sans-serif";
-        $b_font = "'Roboto', sans-serif";
-    } elseif ($pack === 'minimalist') {
-        $fonts_url = 'https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@300;400;500;600&display=swap';
-        $h_font = "'Montserrat', sans-serif";
-        $b_font = "'Open Sans', sans-serif";
-    }
+            $h_font = "'Cormorant Garamond', serif";
+        } elseif ($pack === 'technical') {
+            $fonts_url = 'https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Roboto:wght@300;400;500;700&display=swap';
+            $h_font = "'Oswald', sans-serif";
+            $b_font = "'Roboto', sans-serif";
+        } elseif ($pack === 'minimalist') {
+            $fonts_url = 'https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Open+Sans:wght@300;400;500;600&display=swap';
+            $h_font = "'Montserrat', sans-serif";
+            $b_font = "'Open Sans', sans-serif";
+        }
     
-    echo '<link rel="preconnect" href="https://fonts.googleapis.com">';
-    echo '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>';
-    echo '<link href="' . esc_url($fonts_url) . '" rel="stylesheet">';
-    echo '<style>:root { --tryl-header-font: ' . $h_font . '; --tryl-body-font: ' . $b_font . '; --tryl-mobile-align: ' . esc_attr($mobile_align) . '; }</style>';
+        echo "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n";
+        echo "<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n";
+        echo "<link href=\"" . esc_url($fonts_url) . "\" rel=\"stylesheet\">\n";
+    }
+
+    // Always inject CSS variables regardless of font pack source
+    echo "<style>:root { --tryl-header-font: {$h_font}; --tryl-body-font: {$b_font}; --tryl-mobile-align: " . esc_attr($mobile_align) . "; }</style>\n";
 }
 add_action('wp_head', 'tryl_global_fonts', 1);
 
@@ -188,6 +192,11 @@ function tryl_force_wc_templates( $located, $template_name, $args, $template_pat
     return $located;
 }
 
+add_filter( 'theme_page_templates', function( $templates ) {
+    $templates['page-righteous-shop.php'] = 'Righteous Yield Master Grid';
+    return $templates;
+});
+
 /**
  * Custom Checkout URL Filter
  * Ensures WooCommerce uses the user-defined checkout URL.
@@ -217,6 +226,15 @@ function tryl_universal_template_overrides( $template ) {
     $is_404 = is_404();
     $premium_active = get_option('tryl_premium_products_active', '1');
     $custom_404_active = get_option('tryl_custom_404_active', '1');
+
+    // Page Template Override
+    if ( is_page() ) {
+        $meta = get_post_meta( get_the_ID(), '_wp_page_template', true );
+        if ( $meta === 'page-righteous-shop.php' ) {
+            $file = $plugin_path . 'templates/page-righteous-shop.php';
+            if ( file_exists( $file ) ) return $file;
+        }
+    }
     
     // 1. Single Product Override
     if ( $is_singular_product || $is_product_func ) {
@@ -225,18 +243,6 @@ function tryl_universal_template_overrides( $template ) {
         }
     }
     
-    // 2. Master Shop Page Override (Fixes "Shop acting like a blog" issue)
-    if ( $is_shop_func && ( $is_shop || $is_product_category || $is_product_tag ) ) {
-        // Prioritize Theme/Child Theme template if it exists
-        $t = locate_template( 'page-righteous-shop.php' );
-        if ( ! $t ) {
-            $t = $plugin_path . 'templates/page-righteous-shop.php';
-        }
-        
-        if ( file_exists( $t ) ) {
-            return $t;
-        }
-    }
     
     // 3. 404 Error Page Override
     if ( $is_404 && $custom_404_active === '1' ) {
@@ -250,6 +256,47 @@ function tryl_universal_template_overrides( $template ) {
 }
 add_filter( 'template_include', 'tryl_universal_template_overrides', 999999 );
 
+// ─── 1b. SEEDPROD NUCLEAR KILL SWITCH ─────────────────────────────────────────
+// SeedProd hijacks product pages via its own filter and template_redirect action.
+// These intercepts guarantee our TRYL templates always win on WooCommerce pages.
+
+// Kill SeedProd's own template filter on product pages
+add_filter( 'seedprod_template_include', function( $template ) {
+    if ( is_singular( 'product' ) || ( function_exists('is_product') && is_product() ) ) {
+        $custom = plugin_dir_path( __FILE__ ) . 'templates/single-product.php';
+        if ( file_exists( $custom ) ) return $custom;
+    }
+    if ( function_exists('is_checkout') && is_checkout() ) {
+        $custom = plugin_dir_path( __FILE__ ) . 'templates/checkout/form-checkout.php';
+        if ( get_option('tryl_nike_checkout_active', '1') === '1' && file_exists( $custom ) ) return $custom;
+    }
+    return $template;
+}, 99999 );
+
+// Prevent SeedProd from doing a full page takeover on WooCommerce pages
+add_action( 'template_redirect', function() {
+    if ( is_singular( 'product' ) || ( function_exists('is_product') && is_product() ) ||
+         ( function_exists('is_shop') && is_shop() ) ||
+         ( function_exists('is_checkout') && is_checkout() ) ||
+         ( function_exists('is_cart') && is_cart() ) ) {
+        // Remove SeedProd's template hijack hooks if they exist
+        if ( class_exists( 'SeedProd_Lite' ) || class_exists( 'SeedProd' ) ) {
+            remove_all_filters( 'template_include', 99 );    // SeedProd typically hooks at 99
+            remove_all_filters( 'template_include', 100 );
+            // Re-add ours at nuclear priority
+            add_filter( 'template_include', 'tryl_universal_template_overrides', 999999 );
+        }
+    }
+}, 1 );
+
+// Force WooCommerce product post type to never render as SeedProd blog post
+add_filter( 'seedprod_lp_template', function( $template ) {
+    if ( is_singular( 'product' ) || ( function_exists('is_product') && is_product() ) ) {
+        return false; // Tell SeedProd to stand down on product pages
+    }
+    return $template;
+}, 99999 );
+
 // Add body class for premium product pages
 add_filter('body_class', function($classes) {
     if ( (is_singular('product') || (function_exists('is_product') && is_product())) && get_option('tryl_premium_products_active', '1') === '1' ) {
@@ -261,9 +308,7 @@ add_filter('body_class', function($classes) {
 // Safely intercept Gutenberg Cart & Checkout blocks and force classic shortcodes
 add_filter( 'render_block', function( $block_content, $block ) {
     if ( $block['blockName'] === 'woocommerce/checkout' && get_option('tryl_nike_checkout_active', '1') === '1' ) {
-        if ( function_exists('is_wc_endpoint_url') && empty( is_wc_endpoint_url('order-pay') ) && empty( is_wc_endpoint_url('order-received') ) ) {
-            return do_shortcode( '[woocommerce_checkout]' );
-        }
+        return do_shortcode( '[woocommerce_checkout]' );
     }
     if ( $block['blockName'] === 'woocommerce/cart' ) {
         return do_shortcode( '[woocommerce_cart]' );
@@ -289,28 +334,8 @@ function tryl_get_core_product_card_html( $product ) {
     $cat_cls  = !is_wp_error($cats)&&!empty($cats) ? 'cat-'.implode(' cat-',$cats) : '';
     
     $available_variations = [];
-    $swatches = [];
     if ( $is_var && $is_in_stock ) {
         $available_variations = $product->get_available_variations();
-        foreach ( $available_variations as $var ) {
-            if ( ! $var['is_in_stock'] || ! $var['is_purchasable'] ) continue;
-            foreach ( $var['attributes'] as $attr_name => $attr_val ) {
-                if ( strpos( strtolower($attr_name), 'color' ) !== false && ! empty($attr_val) ) {
-                    if ( ! isset( $swatches[$attr_val] ) ) {
-                        $term = get_term_by('slug', $attr_val, str_replace('attribute_', '', $attr_name));
-                        $name = $term ? $term->name : ucfirst(str_replace('-', ' ', $attr_val));
-                        $hex = $term ? get_term_meta( $term->term_id, 'color', true ) : '';
-                        if ( empty($hex) ) $hex = $attr_val;
-                        $swatch_img = isset($var['image']['src']) && !empty($var['image']['src']) ? $var['image']['src'] : $img;
-                        $swatches[$attr_val] = [
-                            'name' => $name,
-                            'hex' => $hex,
-                            'img' => $swatch_img
-                        ];
-                    }
-                }
-            }
-        }
     }
 
     $badge_text = '';
@@ -355,18 +380,6 @@ function tryl_get_core_product_card_html( $product ) {
         <div class="tryl-card-name"><a href="<?php echo esc_url($purl);?>"><?php echo esc_html($product->get_name());?></a></div>
         <div class="tryl-card-cat"><?php echo wp_strip_all_tags(wc_get_product_category_list($pid));?></div>
         
-        <?php if ( ! empty($swatches) ) : ?>
-        <div class="tryl-card-swatches" style="display:flex; gap:6px; margin-bottom:12px;">
-            <?php foreach ( $swatches as $swatch ) : 
-                $bg = strtolower($swatch['hex']);
-                $css_colors = ['black'=>'#000','white'=>'#fff','red'=>'#d63638','blue'=>'#2271b1','green'=>'#007017','yellow'=>'#f0b849','navy'=>'#000080','gray'=>'#8c8f94','grey'=>'#8c8f94','pink'=>'#e51573','purple'=>'#8224e3','orange'=>'#d94f4f','tan'=>'#d2b48c','olive'=>'#808000','brown'=>'#a52a2a'];
-                if ( isset($css_colors[$bg]) ) $bg = $css_colors[$bg];
-            ?>
-            <div class="tryl-swatch" data-img="<?php echo esc_url($swatch['img']); ?>" title="<?php echo esc_attr($swatch['name']); ?>" style="width:16px; height:16px; border-radius:50%; border:1px solid var(--border); background:<?php echo esc_attr($bg); ?>; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;"></div>
-            <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-
         <div class="tryl-card-footer-actions">
           <div class="tryl-card-price"><?php echo wp_kses_post($product->get_price_html()); ?></div>
         <?php if ( ! $is_in_stock ) : ?>
@@ -520,6 +533,29 @@ function tryl_core_3d_shop_shortcode() {
     .tryl-badge.dynamic-badge { background: <?php echo esc_attr($badges_bg); ?> !important; color: <?php echo esc_attr($badges_text_color); ?> !important; }
     <?php endif; ?>
     .tryl-badge.sold-out { background: #d63638 !important; color: #fff !important; }
+    .tryl-atc-variation.added { background: var(--accent) !important; color: var(--dark) !important; border-color: var(--accent) !important; }
+    @media(max-width: 768px) {
+        .tryl-card { transform: none !important; will-change: auto !important; }
+        .tryl-card:hover { transform: none !important; box-shadow: none !important; }
+        .tryl-inline-var-dropdown {
+            position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; width: 100% !important;
+            background: var(--card-bg) !important; z-index: 999999 !important; padding: 24px 24px 48px !important;
+            border-radius: 24px 24px 0 0 !important; box-shadow: 0 -10px 40px rgba(0,0,0,0.2) !important; margin-top: 0 !important;
+        }
+        .tryl-inline-var-dropdown::before {
+            content: ''; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 40px; height: 4px; background: var(--border); border-radius: 4px;
+        }
+        .tryl-inline-var-dropdown > div {
+            max-height: 50vh !important; padding-top: 12px;
+        }
+        .tryl-atc-variation {
+            padding: 12px 16px !important; font-size: 0.85rem !important;
+        }
+    }
+    .tryl-mobile-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999998; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s;
+    }
+    .tryl-mobile-overlay.open { opacity: 1; visibility: visible; }
     </style>
     <div class="tryl-shop">
       <div class="tryl-shop-inner">
@@ -573,29 +609,6 @@ function tryl_core_3d_shop_shortcode() {
         });
       });
           
-          function bindSwatches() {
-              document.querySelectorAll('.tryl-swatch:not(.bound)').forEach(sw => {
-                sw.classList.add('bound');
-                sw.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    var imgUrl = this.dataset.img;
-                    if (imgUrl) {
-                        var card = this.closest('.tryl-card');
-                        var cardImg = card.querySelector('.tryl-card-img img');
-                        if (cardImg) {
-                            cardImg.src = imgUrl;
-                            var swatches = card.querySelectorAll('.tryl-swatch');
-                            swatches.forEach(s => { s.style.transform = 'scale(1)'; s.style.boxShadow = 'none'; });
-                            this.style.transform = 'scale(1.2)';
-                            this.style.boxShadow = '0 0 0 1.5px var(--dark)';
-                        }
-                    }
-                });
-              });
-          }
-          bindSwatches();
-          
           var loadMoreBtn = document.getElementById('trylLoadMoreBtn');
           if (loadMoreBtn) {
               loadMoreBtn.addEventListener('click', function() {
@@ -622,7 +635,6 @@ function tryl_core_3d_shop_shortcode() {
                           if(typeof VanillaTilt!=='undefined') {
                               VanillaTilt.init(grid.querySelectorAll('[data-tilt]'));
                           }
-                          bindSwatches();
                           window.trylApplyGridFilter();
     
                           btn.setAttribute('data-page', page);
@@ -642,6 +654,202 @@ function tryl_core_3d_shop_shortcode() {
                   });
               });
           }
+
+          // ── FEEDBACK ANIMATION SYSTEM ──
+          function trylPlayFeedbackAnim(btn) {
+              var effect = window.trylMiniCart ? window.trylMiniCart.animEffect : 'scale';
+              if (effect === 'none' || typeof gsap === 'undefined') return;
+
+              if (effect === 'glow') {
+                  var card = btn.closest('.tryl-card');
+                  if (card) {
+                      var ogShadow = card.style.boxShadow;
+                      var ogTransform = card.style.transform;
+                      gsap.to(card, {
+                          boxShadow: '0 0 0 4px var(--accent)', scale: 1.02, duration: 0.3, repeat: 1, yoyo: true, ease: 'power2.out',
+                          onComplete: () => { card.style.boxShadow = ogShadow; card.style.transform = ogTransform; }
+                      });
+                  }
+              } else if (effect === 'scale') {
+                  var cartIcon = document.querySelector('.tryl-cart-count-badge');
+                  if (cartIcon) {
+                      gsap.fromTo(cartIcon, { scale: 1 }, { scale: 1.4, duration: 0.3, ease: 'back.out(1.7)', onComplete: () => gsap.to(cartIcon, { scale: 1, duration: 0.2, ease: 'power2.in' }) });
+                  }
+              } else if (effect === 'bounce') {
+                  gsap.fromTo(btn, { scale: 1 }, { scale: 1.08, duration: 0.15, ease: 'power2.out', yoyo: true, repeat: 1 });
+              }
+          }
+
+          // ── SETUP MOBILE OVERLAY ──
+          if (!document.getElementById('trylMobileOverlay')) {
+              var over = document.createElement('div');
+              over.id = 'trylMobileOverlay';
+              over.className = 'tryl-mobile-overlay';
+              document.body.appendChild(over);
+              
+              over.addEventListener('click', function() {
+                  document.querySelectorAll('.tryl-inline-var-dropdown').forEach(d => {
+                      if (d.style.display !== 'none') {
+                          var isMobile = window.innerWidth <= 768;
+                          if (isMobile) {
+                              gsap.to(d, { y: '100%', duration: 0.25, ease: 'power2.in', onComplete: () => d.style.display = 'none' });
+                          } else {
+                              gsap.to(d, { opacity: 0, y: -10, duration: 0.2, onComplete: () => d.style.display = 'none' });
+                          }
+                      }
+                  });
+                  over.classList.remove('open');
+              });
+          }
+
+          // ── EVENT DELEGATION FOR SIZE SELECTION & ATC ──
+          document.body.addEventListener('click', function(e) {
+              var inlineToggle = e.target.closest('.tryl-atc-inline-toggle');
+              if (inlineToggle) {
+                  e.preventDefault();
+                  var wrapper = inlineToggle.closest('.tryl-inline-var-wrapper');
+                  var dropdown = wrapper.querySelector('.tryl-inline-var-dropdown');
+                  var isMobile = window.innerWidth <= 768;
+                  var over = document.getElementById('trylMobileOverlay');
+                  
+                  document.querySelectorAll('.tryl-inline-var-dropdown').forEach(d => {
+                      if (d !== dropdown && d.style.display !== 'none') {
+                          if (isMobile) {
+                              gsap.to(d, { y: '100%', duration: 0.2, onComplete: () => d.style.display = 'none' });
+                          } else {
+                              gsap.to(d, { opacity: 0, y: -10, duration: 0.2, onComplete: () => d.style.display = 'none' });
+                          }
+                      }
+                  });
+
+                  if (dropdown.style.display === 'none') {
+                      dropdown.style.display = 'block';
+                      if (isMobile) {
+                          if (over) over.classList.add('open');
+                          gsap.fromTo(dropdown, { y: '100%', opacity: 1 }, { y: '0%', duration: 0.35, ease: 'power3.out' });
+                      } else {
+                          gsap.fromTo(dropdown, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' });
+                      }
+                  } else {
+                      if (isMobile) {
+                          if (over) over.classList.remove('open');
+                          gsap.to(dropdown, { y: '100%', duration: 0.25, ease: 'power2.in', onComplete: () => dropdown.style.display = 'none' });
+                      } else {
+                          gsap.to(dropdown, { opacity: 0, y: -10, duration: 0.2, onComplete: () => dropdown.style.display = 'none' });
+                      }
+                  }
+                  return;
+              }
+
+              var varBtn = e.target.closest('.tryl-atc-variation');
+              if (varBtn) {
+                  e.preventDefault();
+                  if (varBtn.classList.contains('loading')) return;
+                  
+                  var pid = varBtn.dataset.pid;
+                  var vid = varBtn.dataset.vid;
+                  var originalText = varBtn.innerHTML;
+                  
+                  varBtn.classList.add('loading');
+                  varBtn.innerHTML = 'Adding...';
+                  
+                  var fd = new FormData();
+                  fd.append('action', 'tryl_ajax_add_to_cart');
+                  fd.append('product_id', pid);
+                  fd.append('variation_id', vid);
+                  fd.append('quantity', 1);
+                  
+                  var ajaxUrl = (window.trylMiniCart && window.trylMiniCart.ajaxurl) ? window.trylMiniCart.ajaxurl : '<?php echo admin_url('admin-ajax.php'); ?>';
+                  
+                  fetch(ajaxUrl, { method: 'POST', body: fd })
+                  .then(res => res.json())
+                  .then(res => {
+                      varBtn.classList.remove('loading');
+                      if (res.success) {
+                          varBtn.innerHTML = window.trylMiniCart ? window.trylMiniCart.btnText : 'Added!';
+                          varBtn.classList.add('added');
+                          trylPlayFeedbackAnim(varBtn);
+                          
+                          if (window.trylOpenCart && (window.trylMiniCart && window.trylMiniCart.autoOpen === '1')) window.trylOpenCart();
+                          
+                          setTimeout(() => {
+                              varBtn.innerHTML = originalText;
+                              varBtn.classList.remove('added');
+                              var dropdown = varBtn.closest('.tryl-inline-var-dropdown');
+                              if(dropdown) {
+                                  var isMobile = window.innerWidth <= 768;
+                                  if (isMobile) {
+                                      var over = document.getElementById('trylMobileOverlay');
+                                      if (over) over.classList.remove('open');
+                                      gsap.to(dropdown, { y: '100%', duration: 0.25, ease: 'power2.in', onComplete: () => dropdown.style.display = 'none' });
+                                  } else {
+                                      gsap.to(dropdown, { opacity: 0, y: -10, duration: 0.2, onComplete: () => dropdown.style.display = 'none' });
+                                  }
+                              }
+                          }, 1500);
+                      } else {
+                          varBtn.innerHTML = 'Error';
+                          setTimeout(() => { varBtn.innerHTML = originalText; }, 2000);
+                      }
+                  })
+                  .catch(err => {
+                      varBtn.classList.remove('loading');
+                      varBtn.innerHTML = 'Error';
+                      setTimeout(() => { varBtn.innerHTML = originalText; }, 2000);
+                  });
+                  return;
+              }
+
+              var simpleAtc = e.target.closest('.tryl-atc:not(.tryl-atc-choose)');
+              if (simpleAtc) {
+                  if (simpleAtc.hasAttribute('disabled') || simpleAtc.id === 'trylLoadMoreBtn') return;
+                  e.preventDefault();
+                  if (simpleAtc.classList.contains('loading')) return;
+                  
+                  var pid = simpleAtc.dataset.pid;
+                  if (!pid) return;
+                  
+                  var span = simpleAtc.querySelector('span');
+                  var originalHTML = simpleAtc.innerHTML;
+                  
+                  simpleAtc.classList.add('loading');
+                  if (span) span.innerText = 'Adding...'; else simpleAtc.innerText = 'Adding...';
+                  
+                  var fd = new FormData();
+                  fd.append('action', 'tryl_ajax_add_to_cart');
+                  fd.append('product_id', pid);
+                  fd.append('quantity', 1);
+                  
+                  var ajaxUrl = (window.trylMiniCart && window.trylMiniCart.ajaxurl) ? window.trylMiniCart.ajaxurl : '<?php echo admin_url('admin-ajax.php'); ?>';
+                  
+                  fetch(ajaxUrl, { method: 'POST', body: fd })
+                  .then(res => res.json())
+                  .then(res => {
+                      simpleAtc.classList.remove('loading');
+                      if (res.success) {
+                          var addedText = window.trylMiniCart ? window.trylMiniCart.btnText : 'Added!';
+                          if (span) span.innerText = addedText; else simpleAtc.innerText = addedText;
+                          simpleAtc.classList.add('added');
+                          trylPlayFeedbackAnim(simpleAtc);
+                          
+                          if (window.trylOpenCart && (window.trylMiniCart && window.trylMiniCart.autoOpen === '1')) window.trylOpenCart();
+                          
+                          setTimeout(() => {
+                              simpleAtc.innerHTML = originalHTML;
+                              simpleAtc.classList.remove('added');
+                          }, 1500);
+                      } else {
+                          if (span) span.innerText = 'Error'; else simpleAtc.innerText = 'Error';
+                          setTimeout(() => { simpleAtc.innerHTML = originalHTML; }, 2000);
+                      }
+                  })
+                  .catch(err => {
+                      simpleAtc.classList.remove('loading');
+                      if (span) span.innerText = 'Error'; else simpleAtc.innerText = 'Error';
+                      setTimeout(() => { simpleAtc.innerHTML = originalHTML; }, 2000);
+                  });
+              }
+          });
     });
     </script>
     <?php
@@ -1916,11 +2124,103 @@ function tryl_mini_cart_html() {
         checkoutUrl: '<?php echo esc_js( function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : home_url('/checkout/') ); ?>'
       };
       
+      var overlay = document.getElementById('trylMcOverlay');
+      var drawer = document.getElementById('trylMcDrawer');
+      
+      window.trylOpenCart = function() {
+          if (overlay && drawer) {
+              overlay.classList.add('open');
+              drawer.classList.add('open');
+              if (typeof gsap !== 'undefined') {
+                  gsap.to(drawer, { x: '0%', duration: 0.45, ease: 'power3.out' });
+              } else {
+                  drawer.style.transform = 'translateX(0)';
+              }
+              window.trylRefreshCart();
+          } else {
+              window.location.href = window.trylMiniCart.checkoutUrl;
+          }
+      };
+      
+      window.trylCloseCart = function() {
+          if (overlay && drawer) {
+              overlay.classList.remove('open');
+              if (typeof gsap !== 'undefined') {
+                  gsap.to(drawer, { x: '100%', duration: 0.35, ease: 'power2.in', onComplete: () => drawer.classList.remove('open') });
+              } else {
+                  drawer.style.transform = 'translateX(100%)';
+                  drawer.classList.remove('open');
+              }
+          }
+      };
+      
+      window.trylRefreshCart = function() {
+          var fd = new FormData();
+          fd.append('action', 'tryl_refresh_minicart');
+          
+          fetch(window.trylMiniCart.ajaxurl, { method: 'POST', body: fd })
+          .then(res => res.json())
+          .then(res => {
+              if (res.success && res.data) {
+                  var itemsContainer = document.getElementById('trylMcItems');
+                  var subtotalEl = document.getElementById('trylMcSubtotal');
+                  var footerEl = document.getElementById('trylMcFooter');
+                  
+                  if (itemsContainer) itemsContainer.innerHTML = res.data.html;
+                  if (subtotalEl) subtotalEl.innerHTML = res.data.subtotal;
+                  
+                  document.querySelectorAll('.tryl-cart-count').forEach(el => {
+                      el.textContent = res.data.count;
+                      if (el.classList.contains('tryl-cart-count-badge')) {
+                          el.style.display = res.data.count > 0 ? 'flex' : 'none';
+                      }
+                  });
+                  
+                  if (footerEl) footerEl.style.display = res.data.count > 0 ? 'block' : 'none';
+                  bindCartEvents();
+              }
+          });
+      };
+      
+      function bindCartEvents() {
+          document.querySelectorAll('.tryl-mc-qty-btn, .tryl-mc-item-remove').forEach(btn => {
+              var newBtn = btn.cloneNode(true);
+              btn.parentNode.replaceChild(newBtn, btn);
+              newBtn.addEventListener('click', function() {
+                  var key = this.dataset.key;
+                  var isRemove = this.classList.contains('tryl-mc-item-remove');
+                  var qty = 0;
+                  if (!isRemove) {
+                      var qtySpan = this.parentNode.querySelector('.tryl-mc-qty-num');
+                      qty = parseInt(qtySpan.textContent);
+                      if (this.classList.contains('tryl-mc-qty-inc')) qty++;
+                      if (this.classList.contains('tryl-mc-qty-dec')) qty--;
+                      if (qty < 0) qty = 0;
+                  }
+                  this.style.opacity = '0.5';
+                  this.style.pointerEvents = 'none';
+                  var fd = new FormData();
+                  fd.append('action', 'tryl_update_cart');
+                  fd.append('cart_key', key);
+                  fd.append('quantity', qty);
+                  fetch(window.trylMiniCart.ajaxurl, { method: 'POST', body: fd })
+                  .then(res => res.json())
+                  .then(res => window.trylRefreshCart());
+              });
+          });
+      }
+      
+      if (overlay) overlay.addEventListener('click', window.trylCloseCart);
+      var closeBtn = document.getElementById('trylMcClose');
+      if (closeBtn) closeBtn.addEventListener('click', window.trylCloseCart);
+      
+      bindCartEvents();
+      
       // Auto-open drawer on page load if a WooCommerce message indicates an added product
       var wooMsg = document.querySelector('.woocommerce-message');
       if (wooMsg && (wooMsg.textContent.indexOf('added') !== -1 || wooMsg.textContent.indexOf('Added') !== -1)) {
           setTimeout(function() { 
-              if (typeof window.trylOpenCart === 'function') window.trylOpenCart(); 
+              if (typeof window.trylOpenCart === 'function' && window.trylMiniCart.autoOpen === '1') window.trylOpenCart(); 
           }, 400);
       }
     })();
@@ -1947,7 +2247,15 @@ function tryl_ajax_add_to_cart_handler() {
 
     if ( $product->is_type( 'variable' ) && $variation_id === 0 ) wp_send_json_error( [ 'message' => 'Please choose product options.' ] );
 
-    $added = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id );
+    $variation_attributes = [];
+    if ( $variation_id > 0 ) {
+        $variation_obj = wc_get_product( $variation_id );
+        if ( $variation_obj ) {
+            $variation_attributes = $variation_obj->get_variation_attributes();
+        }
+    }
+
+    $added = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id, $variation_attributes );
     if ( $added ) {
         wp_send_json_success( [ 'message' => 'Added to cart.' ] );
     } else {
@@ -3835,7 +4143,7 @@ function tryl_add_gift_wrapping_fee( $cart ) {
     parse_str( $_POST['post_data'] ?? '', $post_data );
     
     if ( isset( $post_data['tryl_gift_wrapping'] ) || isset( $_POST['tryl_gift_wrapping'] ) ) {
-        $fee = 5.00; // You can make this configurable in the dashboard later!
+        $fee = (float) get_option('tryl_gift_wrapping_fee', '5.00');
         $cart->add_fee( __( 'Gift Message & Wrapping', 'woocommerce' ), $fee, true );
     }
 }

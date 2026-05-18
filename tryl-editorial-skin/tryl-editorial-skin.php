@@ -209,6 +209,7 @@ function tryl_editorial_shop_shortcode( $atts ) {
     .te-atc.loading,.te-atc.disabled{opacity:.5;pointer-events:none;}
     .te-atc.added{background:var(--te-sage);}
     .te-atc-variation:hover{background:var(--te-sage)!important;color:var(--te-cream)!important;}
+    .te-atc-variation.added { background: var(--te-sage) !important; color: #fff !important; border-color: var(--te-sage) !important; }
     .te-card-arrow{
       width:34px;height:34px;border-radius:50%;
       border:1px solid var(--te-sand);background:transparent;
@@ -242,6 +243,27 @@ function tryl_editorial_shop_shortcode( $atts ) {
     .woocommerce-checkout .woocommerce{
       font-family:'Inter',sans-serif!important;
     }
+    
+    @media(max-width: 768px) {
+        .te-card { transform: none !important; will-change: auto !important; }
+        .te-card:hover { transform: none !important; box-shadow: var(--shadow) !important; }
+        .tryl-inline-var-dropdown {
+            position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; width: 100% !important;
+            background: var(--te-card) !important; z-index: 999999 !important; padding: 24px 24px 48px !important;
+            border-radius: 24px 24px 0 0 !important; box-shadow: 0 -10px 40px rgba(0,0,0,0.2) !important; margin-top: 0 !important;
+        }
+        .tryl-inline-var-dropdown::before {
+            content: ''; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 40px; height: 4px; background: var(--te-sand); border-radius: 4px;
+        }
+        .tryl-inline-var-dropdown > div {
+            max-height: 50vh !important; padding-top: 12px;
+        }
+        .tryl-atc-variation {
+            padding: 12px 16px !important; font-size: 0.85rem !important;
+        }
+    }
+    .tryl-mobile-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999998; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
+    .tryl-mobile-overlay.open { opacity: 1; visibility: visible; }
     </style>
 
     <div class="te-wrap">
@@ -288,28 +310,8 @@ function tryl_editorial_shop_shortcode( $atts ) {
             $on_sale   = $product->is_on_sale();
             
             $available_variations = [];
-            $swatches = [];
             if ( $is_var && $is_in_stock ) {
                 $available_variations = $product->get_available_variations();
-                foreach ( $available_variations as $var ) {
-                    if ( ! $var['is_in_stock'] || ! $var['is_purchasable'] ) continue;
-                    foreach ( $var['attributes'] as $attr_name => $attr_val ) {
-                        if ( strpos( strtolower($attr_name), 'color' ) !== false && ! empty($attr_val) ) {
-                            if ( ! isset( $swatches[$attr_val] ) ) {
-                                $term = get_term_by('slug', $attr_val, str_replace('attribute_', '', $attr_name));
-                                $name = $term ? $term->name : ucfirst(str_replace('-', ' ', $attr_val));
-                                $hex = $term ? get_term_meta( $term->term_id, 'color', true ) : '';
-                                if ( empty($hex) ) $hex = $attr_val;
-                                $swatch_img = isset($var['image']['src']) && !empty($var['image']['src']) ? $var['image']['src'] : $img;
-                                $swatches[$attr_val] = [
-                                    'name' => $name,
-                                    'hex' => $hex,
-                                    'img' => $swatch_img
-                                ];
-                            }
-                        }
-                    }
-                }
             }
 
             $badge_text = '';
@@ -373,18 +375,6 @@ function tryl_editorial_shop_shortcode( $atts ) {
                 <?php echo esc_html($product->get_name()); ?>
               </a>
               
-              <?php if ( ! empty($swatches) ) : ?>
-              <div class="te-card-swatches" style="display:flex; gap:6px; margin-bottom:12px;">
-                  <?php foreach ( $swatches as $swatch ) : 
-                      $bg = strtolower($swatch['hex']);
-                      $css_colors = ['black'=>'#000','white'=>'#fff','red'=>'#d63638','blue'=>'#2271b1','green'=>'#007017','yellow'=>'#f0b849','navy'=>'#000080','gray'=>'#8c8f94','grey'=>'#8c8f94','pink'=>'#e51573','purple'=>'#8224e3','orange'=>'#d94f4f','tan'=>'#d2b48c','olive'=>'#808000','brown'=>'#a52a2a'];
-                      if ( isset($css_colors[$bg]) ) $bg = $css_colors[$bg];
-                  ?>
-                  <div class="te-swatch" data-img="<?php echo esc_url($swatch['img']); ?>" title="<?php echo esc_attr($swatch['name']); ?>" style="width:14px; height:14px; border-radius:50%; border:1px solid var(--te-sand); background:<?php echo esc_attr($bg); ?>; cursor:pointer; transition:transform 0.2s, box-shadow 0.2s;"></div>
-                  <?php endforeach; ?>
-              </div>
-              <?php endif; ?>
-
               <div class="te-card-footer">
                 <div class="te-card-price"><?php echo wp_kses_post($product->get_price_html()); ?></div>
                 <div class="te-card-footer-actions">
@@ -581,26 +571,201 @@ function tryl_editorial_shop_shortcode( $atts ) {
         });
       });
 
-      // ── 7. SWATCH HOVER IMAGES
-      document.querySelectorAll('.te-swatch').forEach(sw => {
-        sw.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            var imgUrl = this.dataset.img;
-            if (imgUrl) {
-                var card = this.closest('.te-card');
-                var cardImg = card.querySelector('.te-card-img img');
-                if (cardImg) {
-                    cardImg.src = imgUrl;
-                    var swatches = card.querySelectorAll('.te-swatch');
-                    swatches.forEach(s => { s.style.transform = 'scale(1)'; s.style.boxShadow = 'none'; });
-                    this.style.transform = 'scale(1.2)';
-                    this.style.boxShadow = '0 0 0 1.5px var(--te-ink)';
-                }
-            }
-        });
-      });
+      // ── FEEDBACK ANIMATION SYSTEM ──
+      function trylPlayFeedbackAnim(btn) {
+          var effect = window.trylMiniCart ? window.trylMiniCart.animEffect : 'scale';
+          if (effect === 'none' || typeof gsap === 'undefined') return;
 
+          if (effect === 'glow') {
+              var card = btn.closest('.te-card');
+              if (card) {
+                  var ogShadow = card.style.boxShadow;
+                  var ogTransform = card.style.transform;
+                  gsap.to(card, {
+                      boxShadow: '0 0 0 4px var(--te-sage)', scale: 1.02, duration: 0.3, repeat: 1, yoyo: true, ease: 'power2.out',
+                      onComplete: () => { card.style.boxShadow = ogShadow; card.style.transform = ogTransform; }
+                  });
+              }
+          } else if (effect === 'scale') {
+              var cartIcon = document.querySelector('.tryl-cart-count-badge');
+              if (cartIcon) {
+                  gsap.fromTo(cartIcon, { scale: 1 }, { scale: 1.4, duration: 0.3, ease: 'back.out(1.7)', onComplete: () => gsap.to(cartIcon, { scale: 1, duration: 0.2, ease: 'power2.in' }) });
+              }
+          } else if (effect === 'bounce') {
+              gsap.fromTo(btn, { scale: 1 }, { scale: 1.08, duration: 0.15, ease: 'power2.out', yoyo: true, repeat: 1 });
+          }
+      }
+
+      // ── SETUP MOBILE OVERLAY ──
+      if (!document.getElementById('trylMobileOverlay')) {
+          var over = document.createElement('div');
+          over.id = 'trylMobileOverlay';
+          over.className = 'tryl-mobile-overlay';
+          document.body.appendChild(over);
+          
+          over.addEventListener('click', function() {
+              document.querySelectorAll('.tryl-inline-var-dropdown').forEach(d => {
+                  if (d.style.display !== 'none') {
+                      var isMobile = window.innerWidth <= 768;
+                      if (isMobile) {
+                          gsap.to(d, { y: '100%', duration: 0.25, ease: 'power2.in', onComplete: () => d.style.display = 'none' });
+                      } else {
+                          gsap.to(d, { opacity: 0, y: -10, duration: 0.2, onComplete: () => d.style.display = 'none' });
+                      }
+                  }
+              });
+              over.classList.remove('open');
+          });
+      }
+
+      // ── 8. SIZE SELECTION & ADD TO CART (Event Delegation)
+      document.body.addEventListener('click', function(e) {
+        var inlineToggle = e.target.closest('.tryl-atc-inline-toggle');
+        if (inlineToggle) {
+          e.preventDefault();
+          var wrapper = inlineToggle.closest('.tryl-inline-var-wrapper');
+          var dropdown = wrapper.querySelector('.tryl-inline-var-dropdown');
+          var isMobile = window.innerWidth <= 768;
+          var over = document.getElementById('trylMobileOverlay');
+          
+          document.querySelectorAll('.tryl-inline-var-dropdown').forEach(d => {
+            if (d !== dropdown && d.style.display !== 'none') {
+              if (isMobile) {
+                  gsap.to(d, { y: '100%', duration: 0.2, onComplete: () => d.style.display = 'none' });
+              } else {
+                  gsap.to(d, { opacity: 0, y: -10, duration: 0.2, onComplete: () => d.style.display = 'none' });
+              }
+            }
+          });
+
+          if (dropdown.style.display === 'none') {
+            dropdown.style.display = 'block';
+            if (isMobile) {
+                if (over) over.classList.add('open');
+                gsap.fromTo(dropdown, { y: '100%', opacity: 1 }, { y: '0%', duration: 0.35, ease: 'power3.out' });
+            } else {
+                gsap.fromTo(dropdown, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' });
+            }
+          } else {
+            if (isMobile) {
+                if (over) over.classList.remove('open');
+                gsap.to(dropdown, { y: '100%', duration: 0.25, ease: 'power2.in', onComplete: () => dropdown.style.display = 'none' });
+            } else {
+                gsap.to(dropdown, { opacity: 0, y: -10, duration: 0.2, onComplete: () => dropdown.style.display = 'none' });
+            }
+          }
+          return;
+        }
+
+        var varBtn = e.target.closest('.tryl-atc-variation');
+        if (varBtn) {
+          e.preventDefault();
+          if (varBtn.classList.contains('loading')) return;
+          
+          var pid = varBtn.dataset.pid;
+          var vid = varBtn.dataset.vid;
+          var originalText = varBtn.innerHTML;
+          
+          varBtn.classList.add('loading');
+          varBtn.innerHTML = 'Adding...';
+          
+          var fd = new FormData();
+          fd.append('action', 'tryl_ajax_add_to_cart');
+          fd.append('product_id', pid);
+          fd.append('variation_id', vid);
+          fd.append('quantity', 1);
+          
+          var ajaxUrl = (window.trylMiniCart && window.trylMiniCart.ajaxurl) ? window.trylMiniCart.ajaxurl : '/wp-admin/admin-ajax.php';
+          
+          fetch(ajaxUrl, { method: 'POST', body: fd })
+          .then(res => res.json())
+          .then(res => {
+            varBtn.classList.remove('loading');
+            if (res.success) {
+              varBtn.innerHTML = window.trylMiniCart ? window.trylMiniCart.btnText : 'Added!';
+              varBtn.classList.add('added');
+              trylPlayFeedbackAnim(varBtn);
+              
+              if (window.trylOpenCart && (window.trylMiniCart && window.trylMiniCart.autoOpen === '1')) window.trylOpenCart();
+              
+              setTimeout(() => {
+                varBtn.innerHTML = originalText;
+                varBtn.classList.remove('added');
+                var dropdown = varBtn.closest('.tryl-inline-var-dropdown');
+                if(dropdown) {
+                  var isMobile = window.innerWidth <= 768;
+                  if (isMobile) {
+                      var over = document.getElementById('trylMobileOverlay');
+                      if (over) over.classList.remove('open');
+                      gsap.to(dropdown, { y: '100%', duration: 0.25, ease: 'power2.in', onComplete: () => dropdown.style.display = 'none' });
+                  } else {
+                      gsap.to(dropdown, { opacity: 0, y: -10, duration: 0.2, onComplete: () => dropdown.style.display = 'none' });
+                  }
+                }
+              }, 1500);
+            } else {
+              varBtn.innerHTML = 'Error';
+              setTimeout(() => { varBtn.innerHTML = originalText; }, 2000);
+            }
+          })
+          .catch(err => {
+            varBtn.classList.remove('loading');
+            varBtn.innerHTML = 'Error';
+            setTimeout(() => { varBtn.innerHTML = originalText; }, 2000);
+          });
+          return;
+        }
+
+        var simpleAtc = e.target.closest('.tryl-atc:not(.tryl-atc-choose)');
+        if (simpleAtc) {
+          if (simpleAtc.hasAttribute('disabled')) return;
+          e.preventDefault();
+          if (simpleAtc.classList.contains('loading')) return;
+          
+          var pid = simpleAtc.dataset.pid;
+          if (!pid) return;
+          
+          var span = simpleAtc.querySelector('span');
+          var originalHTML = simpleAtc.innerHTML;
+          
+          simpleAtc.classList.add('loading');
+          if (span) span.innerText = 'Adding...'; else simpleAtc.innerText = 'Adding...';
+          
+          var fd = new FormData();
+          fd.append('action', 'tryl_ajax_add_to_cart');
+          fd.append('product_id', pid);
+          fd.append('quantity', 1);
+          
+          var ajaxUrl = (window.trylMiniCart && window.trylMiniCart.ajaxurl) ? window.trylMiniCart.ajaxurl : '/wp-admin/admin-ajax.php';
+          
+          fetch(ajaxUrl, { method: 'POST', body: fd })
+          .then(res => res.json())
+          .then(res => {
+            simpleAtc.classList.remove('loading');
+            if (res.success) {
+              var addedText = window.trylMiniCart ? window.trylMiniCart.btnText : 'Added!';
+              if (span) span.innerText = addedText; else simpleAtc.innerText = addedText;
+              simpleAtc.classList.add('added');
+              trylPlayFeedbackAnim(simpleAtc);
+              
+              if (window.trylOpenCart && (window.trylMiniCart && window.trylMiniCart.autoOpen === '1')) window.trylOpenCart();
+              
+              setTimeout(() => {
+                simpleAtc.innerHTML = originalHTML;
+                simpleAtc.classList.remove('added');
+              }, 1500);
+            } else {
+              if (span) span.innerText = 'Error'; else simpleAtc.innerText = 'Error';
+              setTimeout(() => { simpleAtc.innerHTML = originalHTML; }, 2000);
+            }
+          })
+          .catch(err => {
+            simpleAtc.classList.remove('loading');
+            if (span) span.innerText = 'Error'; else simpleAtc.innerText = 'Error';
+            setTimeout(() => { simpleAtc.innerHTML = originalHTML; }, 2000);
+          });
+        }
+      });
     })();
     </script>
     <?php

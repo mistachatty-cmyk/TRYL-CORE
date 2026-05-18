@@ -2,6 +2,11 @@ C:\Users\glory\.gemini\antigravity\scratch\tryl-ecommerce-core\tryl-ecommerce-co
 
 All notable changes to the TRYL Premium E-Commerce Core will be documented here.
 
+## [3.19.0]
+
+### Added
+- Selectable GSAP Feedback Animations: Implemented the "Glow," "Scale," and "Bounce" visual feedback animations for the Add to Cart button, controllable from the Checkout settings tab. This fulfills the OpenCode plans for enhanced user feedback.
+
 ## [3.18.0]
 
 ### Added

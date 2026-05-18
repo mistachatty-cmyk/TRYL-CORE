@@ -313,18 +313,37 @@ document.addEventListener("DOMContentLoaded", function() {
                     targetBtn.onclick = function (e) { e.preventDefault(); window.location.href = checkoutUrl; };
                 }, 1500);
 
+                // --- NEW ANIMATION LOGIC ---
+                const feedbackType = (typeof trylMiniCart !== 'undefined' && trylMiniCart.animEffect) ? trylMiniCart.animEffect : 'glow';
+
                 if (typeof gsap !== 'undefined') {
-                    gsap.fromTo(targetBtn, { scale: 0.9, backgroundColor: '#31d190', color: '#fff' }, { scale: 1, duration: 0.35, ease: 'back.out(2)' });
-                    if (card) {
-                        gsap.fromTo(card,
-                            { boxShadow: '0 0 0px rgba(49, 209, 144, 0)', borderColor: 'var(--border)' }, 
-                            {
-                                boxShadow: '0 0 20px rgba(49, 209, 144, 0.65)', borderColor: '#31d190', duration: 0.3, repeat: 1, yoyo: true, ease: 'power1.inOut', onComplete: () => {
-                                    gsap.to(card, { boxShadow: '', borderColor: '', duration: 0.3 });
-                                }
+                    switch (feedbackType) {
+                        case 'glow':
+                            gsap.fromTo(targetBtn, { scale: 0.9, backgroundColor: '#31d190', color: '#fff' }, { scale: 1, duration: 0.35, ease: 'back.out(2)' });
+                            if (card) {
+                                gsap.fromTo(card, 
+                                    { boxShadow: '0 0 0px rgba(49, 209, 144, 0)', borderColor: 'var(--border)' }, 
+                                    { boxShadow: '0 0 20px rgba(49, 209, 144, 0.65)', borderColor: '#31d190', duration: 0.3, repeat: 1, yoyo: true, ease: 'power1.inOut', onComplete: () => {
+                                        gsap.to(card, { boxShadow: '', borderColor: '', duration: 0.3 });
+                                    }});
+                            }
+                            break;
+                        case 'scale':
+                            gsap.fromTo(targetBtn, { scale: 0.9, backgroundColor: '#31d190', color: '#fff' }, { scale: 1, duration: 0.35, ease: 'back.out(2)' });
+                            document.querySelectorAll('.tryl-cart-count-badge, .tryl-cart-count').forEach(function(badge) {
+                                gsap.timeline().to(badge, { scale: 1.4, duration: 0.2, ease: 'back.out(2)' }).to(badge, { scale: 1, duration: 0.3, ease: 'power2.out' });
                             });
+                            break;
+                        case 'bounce':
+                            gsap.timeline().fromTo(targetBtn, { scale: 0.9, backgroundColor: '#31d190', color: '#fff' }, { scale: 1.15, duration: 0.3, ease: 'back.out(3)' }).to(targetBtn, { scale: 1, duration: 0.3, ease: 'power2.out', delay: 0.2 });
+                            break;
+                        case 'none':
+                        default:
+                            gsap.fromTo(targetBtn, { scale: 0.9, backgroundColor: '#31d190', color: '#fff' }, { scale: 1, duration: 0.35, ease: 'back.out(2)' });
+                            break;
                     }
                 }
+                // --- END NEW LOGIC ---
                 
                 // Refresh Mini Cart using the globally exposed function
                 if (typeof window.trylRefreshCart === 'function') {
