@@ -31,7 +31,7 @@ function tryl_core_enqueue_assets() {
     $plugin_url = plugin_dir_url( __FILE__ );
     wp_enqueue_script( 'gsap', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js', [], null, true );
     wp_enqueue_style( 'tryl-core-css', $plugin_url . 'assets/css/tryl-core.css', [], '3.4.0' );
-    wp_enqueue_script( 'tryl-core-js', $plugin_url . 'assets/js/tryl-core.js', ['gsap'], '3.4.0', true );
+    wp_enqueue_script( 'tryl-core-js', $plugin_url . 'assets/js/tryl-core.js', [], '3.4.0', true );
     
       wp_localize_script( 'tryl-core-js', 'trylCoreSettings', [
           'ajaxurl' => admin_url( 'admin-ajax.php' ),
@@ -1202,6 +1202,14 @@ function tryl_global_nav_css() {
     body::before{content:'';display:block;height:64px;}
     .tryl-injected-nav{position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--ry-nav-bg);backdrop-filter:blur(18px);border-bottom:1px solid var(--ry-border);display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:64px;transition:background .3s, border-color .3s;}
     @media(max-width:700px){.tryl-injected-nav{padding:0 20px;}}
+    
+    /* WordPress Admin Bar Layout Offsets */
+    .admin-bar .tryl-injected-nav { top: 32px; }
+    .admin-bar .tryl-mobile-nav { top: 96px; }
+    @media (max-width: 782px) {
+        .admin-bar .tryl-injected-nav { top: 46px; }
+        .admin-bar .tryl-mobile-nav { top: 110px; }
+    }
     .tryl-nav-brand-bar{font-family:var(--tryl-header-font);font-weight:900;font-size:1.1rem;letter-spacing:.05em;text-transform:uppercase;color:var(--ry-accent);text-decoration:none;}
     .tryl-nav-brand-logo{display:flex;align-items:center;}
     .tryl-nav-brand-logo img{max-height:40px;width:auto;display:block;}
@@ -1261,6 +1269,10 @@ function tryl_global_nav_css() {
 add_action( 'wp_head', 'tryl_global_nav_css' ); // Restored inline to fix missing CSS issues
 
 function tryl_inject_nav_bar() {
+    static $rendered = false;
+    if ( $rendered ) return;
+    $rendered = true;
+    
     if ( get_option('tryl_nav_active', '1') !== '1' ) return;
 
     $logo_url = get_option( 'tryl_header_logo' );
@@ -1298,6 +1310,9 @@ function tryl_inject_nav_bar() {
     $nav_items['Prayer Request'] = get_option('tryl_nav_prayer', home_url('/prayer-request/'));
     $nav_items['Contact']        = get_option('tryl_nav_contact', home_url('/contact/'));
     ?>
+    <style id="tryl-nav-resiliency-inline">
+    .tryl-mobile-nav:not(.open) { display: none !important; }
+    </style>
     <nav class="tryl-injected-nav">
       <?php if ( $logo_url ) : ?>
       <a href="<?php echo esc_url(home_url('/')); ?>" class="tryl-nav-brand-logo"><img src="<?php echo esc_url($logo_url); ?>" alt="<?php echo esc_attr(get_bloginfo('name')); ?>"></a>
@@ -1389,6 +1404,16 @@ function tryl_inject_nav_bar() {
     })();
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Relocate nav bar and mobile drawer directly to body's first child to prevent viewport-traps in nested relative wrappers (common in custom theme footers)
+        var injectedNav = document.querySelector('.tryl-injected-nav');
+        var trylMobileNav = document.getElementById('trylMobileNav');
+        if (injectedNav && document.body && document.body.firstChild !== injectedNav) {
+            document.body.insertBefore(injectedNav, document.body.firstChild);
+            if (trylMobileNav) {
+                document.body.insertBefore(trylMobileNav, injectedNav.nextSibling);
+            }
+        }
+
         var btn = document.getElementById('trylHamburger');
         var nav = document.getElementById('trylMobileNav');
         if(btn && nav) {
@@ -1543,6 +1568,10 @@ function tryl_global_footer_css() {
 add_action( 'wp_head', 'tryl_global_footer_css' ); // Restored inline to fix missing CSS issues
 
 function tryl_inject_global_footer() {
+    static $rendered = false;
+    if ( $rendered ) return;
+    $rendered = true;
+    
     if ( get_option('tryl_footer_active', '1') !== '1' ) return;
 
     $shop_url = get_option('tryl_nav_shop');
@@ -1726,6 +1755,10 @@ function tryl_mini_cart_assets() {
 add_action( 'wp_head', 'tryl_mini_cart_assets' ); // Restored inline to fix missing CSS issues
 
 function tryl_mini_cart_html() {
+    static $rendered = false;
+    if ( $rendered ) return;
+    $rendered = true;
+    
     if ( ! tryl_should_load_mini_cart() ) return;
     $count    = WC()->cart ? WC()->cart->get_cart_contents_count() : 0;
     $subtotal = WC()->cart ? WC()->cart->get_cart_subtotal() : '$0.00';
@@ -1737,6 +1770,67 @@ function tryl_mini_cart_html() {
         $checkout_url = function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : home_url('/checkout/');
     }
     ?>
+    <style>
+    /* Structural CSS Fallbacks for Mini Cart & Nav Drawer */
+    .tryl-mc-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 99998;
+        background: var(--mc-overlay, rgba(0,0,0,0.45));
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.35s ease, visibility 0.35s ease;
+    }
+    .tryl-mc-overlay.open {
+        opacity: 1;
+        visibility: visible;
+    }
+    .tryl-mc-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 99999;
+        width: 420px;
+        max-width: 92vw;
+        background: var(--mc-bg, #fff);
+        box-shadow: var(--mc-shadow, 0 0 40px rgba(0,0,0,0.08));
+        display: flex;
+        flex-direction: column;
+        transform: translateX(100%);
+        transition: transform 0.45s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        will-change: transform;
+    }
+    @media(max-width:480px){.tryl-mc-drawer{width:100vw;max-width:100vw;}}
+    
+    .tryl-injected-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 64px;
+    }
+    .tryl-mobile-nav {
+        position: fixed;
+        top: 64px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9998;
+        transform: translateY(-100%);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+    </style>
+    <style id="tryl-mc-resiliency-inline">
+    .tryl-mc-overlay:not(.open) { display: none !important; }
+    .tryl-mc-drawer:not(.open) { display: none !important; }
+    </style>
     <div class="tryl-mc-overlay" id="trylMcOverlay"></div>
     <div class="tryl-mc-drawer" id="trylMcDrawer">
       <div class="tryl-mc-header">
@@ -1812,289 +1906,22 @@ function tryl_mini_cart_html() {
     <script>
     (function(){
       "use strict";
-      var overlay = document.getElementById('trylMcOverlay');
-      var drawer  = document.getElementById('trylMcDrawer');
-      var close   = document.getElementById('trylMcClose');
-
-      if (!overlay || !drawer) return;
-
-      var hasGSAP = typeof gsap !== 'undefined';
-
-      // ── Open / Close (GSAP enhanced, CSS fallback) ──
-      var openTimeline = null;
-      function openCart() {
-        if (!drawer) return;
-        overlay.classList.add('open');
-        if (hasGSAP) {
-          if (openTimeline) openTimeline.kill();
-          openTimeline = gsap.timeline();
-          openTimeline.to(overlay, { opacity: 1, duration: 0.3, ease: 'power2.out' }, 0)
-                       .to(drawer,   { x: '0%', duration: 0.45, ease: 'power3.out' }, 0);
-        } else {
-          drawer.style.transform = 'translateX(0%)';
-        }
-      }
-      function closeCart() {
-        if (!drawer) return;
-        overlay.classList.remove('open');
-        if (hasGSAP) {
-          gsap.to(drawer,  { x: '100%', duration: 0.35, ease: 'power2.in' });
-          gsap.to(overlay, { opacity: 0, duration: 0.3, ease: 'power2.in' });
-        } else {
-          drawer.style.transform = 'translateX(100%)';
-        }
-      }
-      if (close) close.addEventListener('click', closeCart);
-      overlay.addEventListener('click', closeCart);
-
-      window.trylOpenCart  = openCart;
-      window.trylCloseCart = closeCart;
-
-      // ── Update nav cart count badge ──
-      function updateCounts(count) {
-        document.querySelectorAll('.tryl-cart-count').forEach(function(el){
-          el.textContent = count;
-        });
-        document.querySelectorAll('.tryl-cart-count-badge').forEach(function(el){
-          el.style.display = count > 0 ? 'flex' : 'none';
-        });
-      }
-
-      // ── Refresh fragments via AJAX ──
-      function refreshCart(callback) {
-        fetch(trylMiniCart.ajaxurl + '?action=tryl_refresh_minicart', { method: 'GET' })
-        .then(function(r){ return r.json(); })
-        .then(function(res){
-          if (!res.success) return;
-          var itemsEl = document.getElementById('trylMcItems');
-          var footerEl = document.getElementById('trylMcFooter');
-          var subtotalEl = document.getElementById('trylMcSubtotal');
-          var freeShip = document.getElementById('trylMcFreeShip');
-          if (itemsEl) itemsEl.innerHTML = res.data.html;
-          if (subtotalEl) subtotalEl.innerHTML = res.data.subtotal;
-          if (footerEl) footerEl.style.display = res.data.count > 0 ? '' : 'none';
-          if (freeShip) freeShip.textContent = res.data.free_ship || '';
-          updateCounts(res.data.count);
-          bindQtyButtons();
-          if (typeof callback === 'function') callback(res);
-        });
-      }
-
-      // ── AJAX Add to Cart ──
-      document.addEventListener('click', function(e) {
-        var inlineToggle = e.target.closest('.tryl-atc-inline-toggle');
-        if (inlineToggle) {
-            var wrap = inlineToggle.closest('.tryl-inline-var-wrapper');
-            var drop = wrap.querySelector('.tryl-inline-var-dropdown');
-            var isVis = drop.style.display === 'block';
-            
-            document.querySelectorAll('.tryl-inline-var-dropdown').forEach(function(d){ 
-                if (d !== drop && d.style.display === 'block') {
-                    if (hasGSAP) gsap.to(d, {opacity: 0, scale: 0.95, y: 10, duration: 0.15, onComplete: function(){ d.style.display = 'none'; }});
-                    else d.style.display = 'none';
-                }
-            });
-            
-            if (isVis) {
-                if (hasGSAP) gsap.to(drop, {opacity: 0, scale: 0.95, y: 10, duration: 0.15, ease: 'power2.in', onComplete: function(){ drop.style.display = 'none'; }});
-                else drop.style.display = 'none';
-            } else {
-                drop.style.display = 'block';
-                if (hasGSAP) gsap.fromTo(drop, {opacity: 0, scale: 0.95, y: 10}, {opacity: 1, scale: 1, y: 0, duration: 0.3, ease: 'back.out(1.7)'});
-            }
-            return;
-        }
-
-        if (!e.target.closest('.tryl-inline-var-wrapper')) {
-            document.querySelectorAll('.tryl-inline-var-dropdown').forEach(function(d){ 
-                if (d.style.display === 'block') {
-                    if (hasGSAP) gsap.to(d, {opacity: 0, scale: 0.95, y: 10, duration: 0.15, onComplete: function(){ d.style.display = 'none'; }});
-                    else d.style.display = 'none';
-                }
-            });
-        }
-
-        var btn = e.target.closest('.tryl-atc, .tryl-atc-variation');
-        if (!btn || btn.classList.contains('tryl-atc-choose') || btn.classList.contains('tryl-atc-inline-toggle')) return;
-        if (btn.tagName === 'A') e.preventDefault();
-        if (btn.classList.contains('loading')) return;
-
-        var pid = btn.dataset.pid;
-        var vid = btn.dataset.vid;
-        if (!pid) return;
-
-        var ogBtn = btn;
-        if (vid) {
-            var drop = btn.closest('.tryl-inline-var-dropdown');
-            var wrap = btn.closest('.tryl-inline-var-wrapper');
-            var mainToggle = wrap ? wrap.querySelector('.tryl-atc-inline-toggle') : null;
-            
-            if (drop) {
-                if (hasGSAP) gsap.to(drop, {opacity: 0, scale: 0.95, duration: 0.15, onComplete: function(){ drop.style.display = 'none'; }});
-                else drop.style.display = 'none';
-            }
-            if (mainToggle) btn = mainToggle;
-        }
-        
-        btn.classList.add('loading');
-        var span = btn.querySelector('span');
-        var ogText = span ? span.textContent : btn.textContent;
-        if (span) span.textContent = 'Adding...';
-        else btn.textContent = 'Adding...';
-
-        var fd = new FormData();
-        fd.append('action', 'tryl_ajax_add_to_cart');
-        fd.append('product_id', pid);
-        fd.append('quantity', 1);
-        if (vid) fd.append('variation_id', vid);
-
-        fetch(trylMiniCart.ajaxurl, { method: 'POST', credentials: 'same-origin', body: fd })
-        .then(function(r){ return r.json(); })
-        .then(function(res){
-          btn.classList.remove('loading');
-          if (res.success) {
-            btn.classList.add('added');
-            
-            if (span) span.textContent = trylMiniCart.btnText || 'Added!';
-            else btn.textContent = trylMiniCart.btnText || 'Added!';
-
-            setTimeout(function(){ 
-                btn.classList.remove('added'); 
-                if (span) span.textContent = ogText;
-                else btn.textContent = ogText;
-            }, 1500);
-            
-            refreshCart(function(){ 
-                if (trylMiniCart.autoOpen === '1') openCart(); 
-                
-                // GSAP Visual Feedback Handlers
-                if (hasGSAP && trylMiniCart.animEffect !== 'none') {
-                    var cartIcons = document.querySelectorAll('.tryl-cart-count-badge');
-                    var cartWrappers = document.querySelectorAll('.tryl-injected-nav a[href*="cart"] svg, .tryl-mobile-nav a[href*="cart"] svg');
-                    var card = ogBtn.closest('.tryl-card, .te-card');
-                    
-                    if (trylMiniCart.animEffect === 'scale') {
-                        gsap.fromTo(cartWrappers, {scale: 1}, {scale: 1.3, duration: 0.2, yoyo: true, repeat: 1, ease: 'power2.out'});
-                        gsap.fromTo(cartIcons, {scale: 1}, {scale: 1.4, duration: 0.2, yoyo: true, repeat: 1, ease: 'power2.out'});
-                    } else if (trylMiniCart.animEffect === 'glow') {
-                        if (card) gsap.fromTo(card, {boxShadow: card.style.boxShadow}, {boxShadow: '0 0 24px 6px var(--accent, #31d190)', duration: 0.3, yoyo: true, repeat: 1});
-                        gsap.fromTo(cartIcons, {boxShadow: '0 0 0px var(--accent, #31d190)'}, {boxShadow: '0 0 16px 5px var(--accent, #31d190)', duration: 0.3, yoyo: true, repeat: 1});
-                    } else if (trylMiniCart.animEffect === 'bounce') {
-                        gsap.fromTo(btn, {scale: 1}, {scale: 1.08, duration: 0.15, yoyo: true, repeat: 1, ease: 'power2.out'});
-                        gsap.fromTo(cartWrappers, {y: 0}, {y: -8, duration: 0.2, yoyo: true, repeat: 3, ease: 'power1.inOut'});
-                    }
-                }
-            });
-          } else if (res.data && res.data.product_url) {
-            window.location.href = res.data.product_url;
-          }
-        })
-        .catch(function(){ btn.classList.remove('loading'); });
-      });
-
-      // ── AJAX Add to Cart for Single Product Page Forms ──
-      document.addEventListener('submit', function(e) {
-        var form = e.target.closest('form.cart');
-        if (!form) return;
-        e.preventDefault();
-
-        var btn = form.querySelector('button[type="submit"]');
-        if (btn && btn.classList.contains('loading')) return;
-        
-        if (btn) {
-          btn.classList.add('loading');
-          btn.dataset.ogText = btn.textContent;
-          btn.textContent = 'Adding...';
-        }
-
-        var fd = new FormData(form);
-        if (btn && btn.name && btn.value && !fd.has(btn.name)) {
-          fd.append(btn.name, btn.value);
-        } else if (!fd.has('add-to-cart') && btn && btn.value) {
-          fd.append('add-to-cart', btn.value);
-        }
-
-        fetch(window.location.href, { method: 'POST', body: fd })
-        .then(function(r){ return r.text(); })
-        .then(function(html) {
-          // Catch WooCommerce validation errors (e.g., missing size selection)
-          var doc = new DOMParser().parseFromString(html, 'text/html');
-          var errorEl = doc.querySelector('.woocommerce-error');
-          if (errorEl) {
-            if (btn) { btn.classList.remove('loading'); btn.textContent = btn.dataset.ogText; }
-            alert(errorEl.textContent.trim());
-            return;
-          }
-          
-          if (btn) {
-            btn.classList.remove('loading');
-            btn.classList.add('added');
-            btn.textContent = trylMiniCart.btnText || 'Added!';
-            setTimeout(function(){ 
-                btn.classList.remove('added'); 
-                btn.textContent = btn.dataset.ogText; 
-            }, 1800);
-          }
-          
-          if (typeof refreshCart === 'function') { 
-              refreshCart(function(){ 
-                  if (trylMiniCart.autoOpen === '1') openCart(); 
-                  if (hasGSAP && trylMiniCart.animEffect !== 'none') {
-                      var cartIcons = document.querySelectorAll('.tryl-cart-count-badge');
-                      var cartWrappers = document.querySelectorAll('.tryl-injected-nav a[href*="cart"] svg, .tryl-mobile-nav a[href*="cart"] svg');
-                      if (trylMiniCart.animEffect === 'scale') {
-                          gsap.fromTo(cartWrappers, {scale: 1}, {scale: 1.3, duration: 0.2, yoyo: true, repeat: 1, ease: 'power2.out'});
-                          gsap.fromTo(cartIcons, {scale: 1}, {scale: 1.4, duration: 0.2, yoyo: true, repeat: 1, ease: 'power2.out'});
-                      } else if (trylMiniCart.animEffect === 'glow') {
-                          gsap.fromTo(cartIcons, {boxShadow: '0 0 0px var(--accent)'}, {boxShadow: '0 0 16px 5px var(--accent)', duration: 0.3, yoyo: true, repeat: 1});
-                      } else if (trylMiniCart.animEffect === 'bounce') {
-                          gsap.fromTo(cartWrappers, {y: 0}, {y: -8, duration: 0.2, yoyo: true, repeat: 3, ease: 'power1.inOut'});
-                      }
-                  }
-              }); 
-          }
-        })
-        .catch(function(){ if (btn) btn.classList.remove('loading'); form.submit(); });
-      });
-
-      // ── Cart qty / remove handlers ──
-      function bindQtyButtons() {
-        document.querySelectorAll('.tryl-mc-qty-dec, .tryl-mc-qty-inc').forEach(function(el) {
-          el.onclick = function(e) {
-            var b = e.target.closest('button');
-            if (!b) return;
-            var key = b.dataset.key;
-            var inc = b.classList.contains('tryl-mc-qty-inc');
-            var num = b.parentElement.querySelector('.tryl-mc-qty-num');
-            var cur = parseInt(num.textContent) || 1;
-            var qty = inc ? cur + 1 : Math.max(0, cur - 1);
-            updateQty(key, qty);
-          };
-        });
-        document.querySelectorAll('.tryl-mc-item-remove').forEach(function(el) {
-          el.onclick = function(e) {
-            var b = e.target.closest('button');
-            if (b) updateQty(b.dataset.key, 0);
-          };
-        });
-      }
-
-      function updateQty(key, qty) {
-        var fd = new FormData();
-        fd.append('action', 'tryl_update_cart');
-        fd.append('cart_key', key);
-        fd.append('quantity', qty);
-        fetch(trylMiniCart.ajaxurl, { method: 'POST', credentials: 'same-origin', body: fd })
-        .then(function(r){ return r.json(); })
-        .then(function(res){ if (res.success) refreshCart(); });
-      }
-
-      bindQtyButtons();
-
-      // Auto-open drawer on page load if a Woo success notice exists
+      
+      // Ensure trylMiniCart global variable exists
+      window.trylMiniCart = window.trylMiniCart || {
+        ajaxurl: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
+        btnText: '<?php echo esc_js( get_option('tryl_atc_btn_text', 'Added!') ); ?>',
+        autoOpen: '<?php echo esc_js( get_option('tryl_auto_open_cart', '1') ); ?>',
+        animEffect: '<?php echo esc_js( get_option('tryl_cart_anim_effect', 'scale') ); ?>',
+        checkoutUrl: '<?php echo esc_js( function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : home_url('/checkout/') ); ?>'
+      };
+      
+      // Auto-open drawer on page load if a WooCommerce message indicates an added product
       var wooMsg = document.querySelector('.woocommerce-message');
       if (wooMsg && (wooMsg.textContent.indexOf('added') !== -1 || wooMsg.textContent.indexOf('Added') !== -1)) {
-          setTimeout(function() { openCart(); }, 400);
+          setTimeout(function() { 
+              if (typeof window.trylOpenCart === 'function') window.trylOpenCart(); 
+          }, 400);
       }
     })();
     </script>
@@ -2106,27 +1933,21 @@ add_action( 'wp_footer', 'tryl_mini_cart_html' );
 function tryl_ajax_add_to_cart_handler() {
     if ( ! class_exists( 'WooCommerce' ) ) wp_send_json_error( [ 'message' => 'WooCommerce inactive.' ] );
 
-    $product_id = isset( $_POST['product_id'] ) ? (int) $_POST['product_id'] : 0;
-    $quantity   = isset( $_POST['quantity'] ) ? (int) $_POST['quantity'] : 1;
+    $product_id   = isset( $_POST['product_id'] ) ? absint( $_POST['product_id'] ) : 0;
+    $quantity     = isset( $_POST['quantity'] ) ? absint( $_POST['quantity'] ) : 1;
+    $variation_id = isset( $_POST['variation_id'] ) ? absint( $_POST['variation_id'] ) : 0;
 
     if ( ! $product_id ) {
         wp_send_json_error( [ 'message' => 'Invalid product.' ] );
     }
 
-    $product = wc_get_product( $product_id );
-    if ( ! $product ) {
-        wp_send_json_error( [ 'message' => 'Product not found.' ] );
-    }
+    $product_to_add = $variation_id > 0 ? $variation_id : $product_id;
+    $product = wc_get_product( $product_to_add );
+    if ( ! $product ) wp_send_json_error( [ 'message' => 'Product not found.' ] );
 
-    // Variable products should redirect to product page
-    if ( $product->is_type( 'variable' ) ) {
-        wp_send_json_error( [
-            'message'     => 'Please choose options.',
-            'product_url' => get_permalink( $product_id ),
-        ] );
-    }
+    if ( $product->is_type( 'variable' ) && $variation_id === 0 ) wp_send_json_error( [ 'message' => 'Please choose product options.' ] );
 
-    $added = WC()->cart->add_to_cart( $product_id, $quantity );
+    $added = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id );
     if ( $added ) {
         wp_send_json_success( [ 'message' => 'Added to cart.' ] );
     } else {
@@ -2891,7 +2712,7 @@ function tryl_register_admin_page() {
 add_action( 'admin_menu', 'tryl_register_admin_page' );
 
 function tryl_register_settings() {
-    $settings = ['tryl_default_theme', 'tryl_font_pack', 'tryl_shop_grid_limit', 'tryl_shop_grid_columns', 'tryl_nav_active', 'tryl_nav_shop', 'tryl_nav_checkout', 'tryl_nav_mission', 'tryl_nav_prayer', 'tryl_nav_contact', 'tryl_nav_shipping', 'tryl_nav_faq', 'tryl_nav_privacy', 'tryl_nav_terms', 'tryl_footer_active', 'tryl_free_shipping_threshold', 'tryl_footer_desc', 'tryl_prayer_email', 'tryl_developer_signature', 'tryl_header_logo', 'tryl_printful_token', 'tryl_printful_sync_enabled', 'tryl_printful_sync_time', 'tryl_printful_auto_publish', 'tryl_printful_inventory_sync', 'tryl_announcement_active', 'tryl_announcement_text', 'tryl_announcement_url', 'tryl_announcement_bg', 'tryl_announcement_text_color', 'tryl_badges_active', 'tryl_badges_new_days', 'tryl_badges_bestseller_sales', 'tryl_badges_bg', 'tryl_badges_text_color', 'tryl_footer_layout_style', 'tryl_footer_hover_anim', 'tryl_footer_mobile_center', 'tryl_popup_active', 'tryl_popup_heading', 'tryl_popup_text', 'tryl_popup_action_url', 'tryl_popup_btn_text', 'tryl_nextgen_emails_active', 'tryl_email_hero_url', 'tryl_email_footer_msg', 'tryl_checkout_animations', 'tryl_hero_image', 'tryl_hero_text_left', 'tryl_hero_text_right', 'tryl_hero_btn_text', 'tryl_hero_btn_url', 'tryl_nike_checkout_active', 'tryl_nike_checkout_accent', 'tryl_nike_checkout_input_bg', 'tryl_premium_products_active', 'tryl_custom_404_active', 'tryl_prayer_auto_sub', 'tryl_prayer_auto_msg', 'tryl_checkout_features_active', 'tryl_gift_wrapping_fee', 'tryl_product_accordion_active', 'tryl_product_accordion_title', 'tryl_product_accordion_content', 'tryl_product_accordion_categories', 'tryl_atc_btn_text', 'tryl_atc_notice_active', 'tryl_atc_notice_text', 'tryl_sp_trust_badges_active', 'tryl_header_checkout_cta', 'tryl_floating_checkout_active', 'tryl_mobile_menu_align', 'tryl_social_instagram', 'tryl_social_tiktok', 'tryl_social_twitter', 'tryl_social_youtube', 'tryl_social_facebook', 'tryl_myaccount_reskin_active', 'tryl_order_bump_active', 'tryl_order_bump_label', 'tryl_order_bump_fee', 'tryl_auto_open_cart', 'tryl_cart_anim_effect', 'tryl_mockup_engine', 'tryl_printful_ps_email', 'tryl_printful_ps_phone', 'tryl_printful_ps_message', 'tryl_printful_ps_store_name', 'tryl_printful_live_shipping', 'tryl_whatsapp_token', 'tryl_whatsapp_phone_id', 'tryl_whatsapp_order_active', 'tryl_whatsapp_order_template', 'tryl_whatsapp_ship_active', 'tryl_whatsapp_ship_template', 'tryl_email_tracking_active', 'tryl_email_tracking_subject', 'tryl_email_tracking_body', 'tryl_wa_draft_text', 'tryl_admin_ui_primary', 'tryl_admin_ui_accent', 'tryl_admin_ui_bg', 'tryl_admin_ui_border', 'tryl_admin_ui_card', 'tryl_admin_ui_text', 'tryl_admin_ui_muted', 'tryl_target_margin', 'tryl_fulfillment_sla', 'tryl_printful_sandbox_mode', 'tryl_extension_key', 'tryl_custom_h_font', 'tryl_custom_b_font', 'tryl_custom_font_css', 'tryl_font_hero', 'tryl_font_nav', 'tryl_font_btn', 'tryl_newsletter_provider', 'tryl_mailchimp_api', 'tryl_mailchimp_list', 'tryl_klaviyo_api', 'tryl_klaviyo_list', 'tryl_checkout_newsletter_optin', 'tryl_popup_success_msg', 'tryl_checkout_optin_label', 'tryl_welcome_email_active', 'tryl_welcome_email_subject', 'tryl_welcome_email_body', 'tryl_welcome_sms_active', 'tryl_welcome_sms_body'];
+    $settings = ['tryl_default_theme', 'tryl_font_pack', 'tryl_shop_grid_limit', 'tryl_shop_grid_columns', 'tryl_nav_active', 'tryl_nav_shop', 'tryl_nav_checkout', 'tryl_nav_mission', 'tryl_nav_prayer', 'tryl_nav_contact', 'tryl_nav_shipping', 'tryl_nav_faq', 'tryl_nav_privacy', 'tryl_nav_terms', 'tryl_footer_active', 'tryl_free_shipping_threshold', 'tryl_footer_desc', 'tryl_prayer_email', 'tryl_developer_signature', 'tryl_header_logo', 'tryl_printful_token', 'tryl_printful_sync_enabled', 'tryl_printful_sync_time', 'tryl_printful_auto_publish', 'tryl_printful_inventory_sync', 'tryl_announcement_active', 'tryl_announcement_text', 'tryl_announcement_url', 'tryl_announcement_bg', 'tryl_announcement_text_color', 'tryl_badges_active', 'tryl_badges_new_days', 'tryl_badges_bestseller_sales', 'tryl_badges_bg', 'tryl_badges_text_color', 'tryl_footer_layout_style', 'tryl_footer_hover_anim', 'tryl_footer_mobile_center', 'tryl_popup_active', 'tryl_popup_heading', 'tryl_popup_text', 'tryl_popup_action_url', 'tryl_popup_btn_text', 'tryl_nextgen_emails_active', 'tryl_email_hero_url', 'tryl_email_footer_msg', 'tryl_checkout_animations', 'tryl_hero_image', 'tryl_hero_text_left', 'tryl_hero_text_right', 'tryl_hero_btn_text', 'tryl_hero_btn_url', 'tryl_nike_checkout_active', 'tryl_nike_checkout_accent', 'tryl_nike_checkout_input_bg', 'tryl_premium_products_active', 'tryl_custom_404_active', 'tryl_prayer_auto_sub', 'tryl_prayer_auto_msg', 'tryl_checkout_features_active', 'tryl_gift_wrapping_fee', 'tryl_product_accordion_active', 'tryl_product_accordion_title', 'tryl_product_accordion_content', 'tryl_product_accordion_categories', 'tryl_atc_btn_text', 'tryl_atc_notice_active', 'tryl_atc_notice_text', 'tryl_sp_trust_badges_active', 'tryl_header_checkout_cta', 'tryl_floating_checkout_active', 'tryl_mobile_menu_align', 'tryl_social_instagram', 'tryl_social_tiktok', 'tryl_social_twitter', 'tryl_social_youtube', 'tryl_social_facebook', 'tryl_myaccount_reskin_active', 'tryl_order_bump_active', 'tryl_order_bump_label', 'tryl_order_bump_fee', 'tryl_auto_open_cart', 'tryl_cart_anim_effect', 'tryl_mockup_engine', 'tryl_printful_ps_email', 'tryl_printful_ps_phone', 'tryl_printful_ps_message', 'tryl_printful_ps_store_name', 'tryl_printful_live_shipping', 'tryl_whatsapp_token', 'tryl_whatsapp_phone_id', 'tryl_whatsapp_order_active', 'tryl_whatsapp_order_template', 'tryl_whatsapp_ship_active', 'tryl_whatsapp_ship_template', 'tryl_email_tracking_active', 'tryl_email_tracking_subject', 'tryl_email_tracking_body', 'tryl_wa_draft_text', 'tryl_admin_ui_primary', 'tryl_admin_ui_accent', 'tryl_admin_ui_bg', 'tryl_admin_ui_border', 'tryl_admin_ui_card', 'tryl_admin_ui_text', 'tryl_admin_ui_muted', 'tryl_target_margin', 'tryl_fulfillment_sla', 'tryl_printful_sandbox_mode', 'tryl_extension_key', 'tryl_custom_h_font', 'tryl_custom_b_font', 'tryl_custom_font_css', 'tryl_font_hero', 'tryl_font_nav', 'tryl_font_btn', 'tryl_newsletter_provider', 'tryl_mailchimp_api', 'tryl_mailchimp_list', 'tryl_klaviyo_api', 'tryl_klaviyo_list', 'tryl_checkout_newsletter_optin', 'tryl_popup_success_msg', 'tryl_checkout_optin_label', 'tryl_welcome_email_active', 'tryl_welcome_email_subject', 'tryl_welcome_email_body', 'tryl_welcome_sms_active', 'tryl_welcome_sms_body', 'tryl_lokbridge_endpoint'];
     foreach ($settings as $setting) {
         register_setting('tryl_settings_group', $setting);
     }
@@ -3079,17 +2900,17 @@ function tryl_admin_page_html() {
             <div class="tryl-admin-layout">
                 <aside class="tryl-admin-sidebar">
                     <nav class="tryl-admin-nav">
-                        <div class="tryl-admin-nav-item"><a class="tryl-admin-nav-link active" data-tab="general"><span class="dashicons dashicons-admin-generic"></span> General<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a class="tryl-admin-nav-link" data-tab="shop"><span class="dashicons dashicons-cart"></span> Shop Settings<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a class="tryl-admin-nav-link" data-tab="checkout"><span class="dashicons dashicons-money-alt"></span> Checkout Flow<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a class="tryl-admin-nav-link" data-tab="design"><span class="dashicons dashicons-format-image"></span> Store Design<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a class="tryl-admin-nav-link" data-tab="marketing"><span class="dashicons dashicons-email-alt"></span> Marketing<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a class="tryl-admin-nav-link" data-tab="integrations"><span class="dashicons dashicons-rest-api"></span> APIs & Tools<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a class="tryl-admin-nav-link" data-tab="communications"><span class="dashicons dashicons-megaphone"></span> Communications<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a class="tryl-admin-nav-link" data-tab="analytics"><span class="dashicons dashicons-chart-bar"></span> Analytics & Reports<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a class="tryl-admin-nav-link" data-tab="migration"><span class="dashicons dashicons-database"></span> Data & Migration<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a class="tryl-admin-nav-link" data-tab="adminui"><span class="dashicons dashicons-art"></span> Dashboard UI<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a class="tryl-admin-nav-link" data-tab="docs"><span class="dashicons dashicons-welcome-learn-more"></span> Documentation<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="#tab-general" class="tryl-admin-nav-link active" data-tab="general"><span class="dashicons dashicons-admin-generic"></span> General<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="#tab-shop" class="tryl-admin-nav-link" data-tab="shop"><span class="dashicons dashicons-cart"></span> Shop Settings<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="#tab-checkout" class="tryl-admin-nav-link" data-tab="checkout"><span class="dashicons dashicons-money-alt"></span> Checkout Flow<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="#tab-design" class="tryl-admin-nav-link" data-tab="design"><span class="dashicons dashicons-format-image"></span> Store Design<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="#tab-marketing" class="tryl-admin-nav-link" data-tab="marketing"><span class="dashicons dashicons-email-alt"></span> Marketing<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="#tab-integrations" class="tryl-admin-nav-link" data-tab="integrations"><span class="dashicons dashicons-rest-api"></span> APIs & Tools<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="#tab-communications" class="tryl-admin-nav-link" data-tab="communications"><span class="dashicons dashicons-megaphone"></span> Communications<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="#tab-analytics" class="tryl-admin-nav-link" data-tab="analytics"><span class="dashicons dashicons-chart-bar"></span> Analytics & Reports<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="#tab-migration" class="tryl-admin-nav-link" data-tab="migration"><span class="dashicons dashicons-database"></span> Data & Migration<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="#tab-adminui" class="tryl-admin-nav-link" data-tab="adminui"><span class="dashicons dashicons-art"></span> Dashboard UI<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="#tab-docs" class="tryl-admin-nav-link" data-tab="docs"><span class="dashicons dashicons-welcome-learn-more"></span> Documentation<span class="tryl-nav-dot"></span></a></div>
                     </nav>
                 </aside>
 
@@ -3624,6 +3445,25 @@ function tryl_admin_page_html() {
         <p class="description">Copy this key into your Chrome Extension settings. Connect URL: <code><?php echo rest_url('tryl/v1/ecosystem-stats'); ?></code></p>
     </div>
 </div>
+
+<div class="tryl-admin-card" style="border-left: 4px solid #31d190;">
+    <h2><span class="dashicons dashicons-update-alt"></span> LokBridge OTA Update Broadcast Controls</h2>
+    <p class="description" style="margin-top:-20px; margin-bottom:24px;">Configure the target LokBridge updates server registry and manage over-the-air theme/plugin updates broadcast to remote test sites.</p>
+    <div class="tryl-admin-row">
+        <label>Active Engine Version</label>
+        <span style="font-family: monospace; font-size: 1rem; font-weight: 700; color: var(--ry-accent, #31d190);">
+            <?php 
+            $data = get_file_data( __FILE__, [ 'Version' => 'Version' ] );
+            echo esc_html( ! empty( $data['Version'] ) ? $data['Version'] : '3.18' );
+            ?>
+        </span>
+    </div>
+    <div class="tryl-admin-row">
+        <label>LokBridge Endpoint URL</label>
+        <input type="url" name="tryl_lokbridge_endpoint" value="<?php echo esc_url( get_option( 'tryl_lokbridge_endpoint', 'https://updates.lokservices.com/lokbridge/tryl-core.json' ) ); ?>" style="width: 100%; max-width: 500px;" placeholder="e.g. https://updates.lokservices.com/lokbridge/tryl-core.json" />
+        <p class="description">Default: <code>https://updates.lokservices.com/lokbridge/tryl-core.json</code>. For local environment testing, set to: <code>http://localhost:4000/updates/tryl-core.json</code></p>
+    </div>
+</div>
                     </div>
 
 <!-- 7. COMMUNICATIONS TAB -->
@@ -3827,18 +3667,23 @@ function tryl_admin_page_html() {
         </form>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    (function() {
         const navLinks = document.querySelectorAll('.tryl-admin-nav-link');
         const tabs = document.querySelectorAll('.tryl-tab-content');
         
         // Unseen Dot Tracking Logic (Bump the version string if you want to force reset everyone's dots)
         const visitedTabsKey = 'tryl_visited_tabs_v350';
-        let visitedTabs = JSON.parse(localStorage.getItem(visitedTabsKey)) || [];
+        let visitedTabs = [];
+        try {
+            visitedTabs = JSON.parse(localStorage.getItem(visitedTabsKey)) || [];
+        } catch(e) {}
 
         function markTabVisited(tabId) {
             if (!visitedTabs.includes(tabId)) {
                 visitedTabs.push(tabId);
-                localStorage.setItem(visitedTabsKey, JSON.stringify(visitedTabs));
+                try {
+                    localStorage.setItem(visitedTabsKey, JSON.stringify(visitedTabs));
+                } catch(e) {}
             }
             const link = document.querySelector(`.tryl-admin-nav-link[data-tab="${tabId}"]`);
             if (link) {
@@ -3972,7 +3817,7 @@ function tryl_admin_page_html() {
                 .catch(e => alert('Error running cleanup.'));
             });
         }
-    });
+    })();
 </script>
     </div>
     <?php
@@ -5432,13 +5277,20 @@ class TRYL_LokBridge_Updater {
 
     public function __construct() {
         $this->plugin_slug = plugin_basename( __DIR__ . '/tryl-ecommerce-core.php' );
-        $this->version     = '3.12.0'; // Match current plugin version
+        
+        // Extract current plugin version dynamically from file header
+        $data = get_file_data( __FILE__, [ 'Version' => 'Version' ] );
+        $this->version = ! empty( $data['Version'] ) ? $data['Version'] : '3.18';
+        
         $this->cache_key   = 'tryl_lokbridge_cache';
         // Enable cache for production to prevent API rate-limiting and severe WP Admin slowdowns
         $this->cache_allowed = true; 
         
-        // LokBridge JSON manifest endpoint
-        $this->update_endpoint = 'https://updates.lokservices.com/lokbridge/tryl-core.json'; 
+        // Dynamic LokBridge endpoint selection via owner control settings
+        $this->update_endpoint = get_option( 'tryl_lokbridge_endpoint', 'https://updates.lokservices.com/lokbridge/tryl-core.json' );
+        if ( empty( $this->update_endpoint ) ) {
+            $this->update_endpoint = 'https://updates.lokservices.com/lokbridge/tryl-core.json';
+        }
 
         add_filter( 'pre_set_site_transient_update_plugins', [ $this, 'check_update' ] );
         add_filter( 'plugins_api', [ $this, 'check_info' ], 10, 3 );

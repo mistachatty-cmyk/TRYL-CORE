@@ -70,10 +70,26 @@ archive.on('error', (err) => { throw err; });
 
 archive.pipe(output);
 
-// Append files from the source directory, placing them inside a folder named after the plugin slug, ignoring node_modules and version control meta
-archive.glob('**/*', {
-    cwd: sourceDir,
-    ignore: ['node_modules/**', '.git/**', '.github/**', '*.zip', '.env']
-}, { prefix: pluginFolder });
+// Recursively add files to zip, skipping large node_modules and dot-files at the directory level to prevent severe performance bottlenecks on Windows
+function addDirectoryToZip(dirPath, zipPrefix) {
+    const items = fs.readdirSync(dirPath);
+    for (const item of items) {
+        const fullPath = path.join(dirPath, item);
+        const relativePath = path.join(zipPrefix, item).replace(/\\/g, '/'); // Ensure standard cross-platform zip slashes
+        
+        // Skip ignored directories/files immediately to bypass heavy sub-folders
+        if (item === 'node_modules' || item === '.git' || item === '.github' || item === '.env' || item.endsWith('.zip')) {
+            continue;
+        }
+        
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) {
+            addDirectoryToZip(fullPath, relativePath);
+        } else {
+            archive.file(fullPath, { name: relativePath });
+        }
+    }
+}
 
+addDirectoryToZip(sourceDir, pluginFolder);
 archive.finalize();

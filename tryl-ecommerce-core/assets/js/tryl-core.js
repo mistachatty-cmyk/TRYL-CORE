@@ -3,6 +3,15 @@
  */
 document.addEventListener("DOMContentLoaded", function() {
     
+    // Ensure trylCoreSettings global object exists safely
+    window.trylCoreSettings = window.trylCoreSettings || {
+        ajaxurl: '/wp-admin/admin-ajax.php',
+        btnText: 'Added!',
+        checkoutAnimations: '1',
+        isCartOrCheckout: '0'
+    };
+    var trylCoreSettings = window.trylCoreSettings;
+    
     // ── 1. GLOBAL NAVIGATION & THEME SWITCHER ──
     var hamburger = document.getElementById('trylHamburger');
     var mobileNav = document.getElementById('trylMobileNav');
@@ -124,8 +133,9 @@ document.addEventListener("DOMContentLoaded", function() {
         
         if (close) close.addEventListener('click', closeCart);
         overlay.addEventListener('click', closeCart);
-        window.trylOpenCart  = openCart;
-        window.trylCloseCart = closeCart;
+        window.trylOpenCart    = openCart;
+        window.trylCloseCart   = closeCart;
+        window.trylRefreshCart = refreshCart;
   
         function updateCounts(count) {
           document.querySelectorAll('.tryl-cart-count').forEach(function(el){ el.textContent = count; });
@@ -239,7 +249,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // Handle Add to Cart (Simple Product)
         var atcBtn = e.target.closest('.tryl-atc:not(.tryl-atc-choose)');
-        if (atcBtn && atcBtn.dataset.pid && !atcBtn.classList.contains('disabled')) {
+        if (atcBtn && atcBtn.dataset.pid && !atcBtn.classList.contains('disabled') && !atcBtn.classList.contains('loading')) {
             e.preventDefault();
             handleAddToCart(atcBtn, atcBtn.dataset.pid, 0);
             return;
@@ -247,7 +257,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
         // Handle Add to Cart (Variation Size Button)
         var varBtn = e.target.closest('.tryl-atc-variation');
-        if (varBtn && varBtn.dataset.vid) {
+        if (varBtn && varBtn.dataset.vid && !varBtn.classList.contains('loading')) {
             e.preventDefault();
             handleAddToCart(varBtn, varBtn.dataset.pid, varBtn.dataset.vid);
             return;
@@ -299,7 +309,8 @@ document.addEventListener("DOMContentLoaded", function() {
                     targetBtn.style.borderColor = 'var(--dark, #0d1b0f)';
                     targetBtn.classList.remove('tryl-atc-inline-toggle');
                     targetBtn.classList.add('tryl-go-checkout');
-                    targetBtn.onclick = function (e) { e.preventDefault(); window.location.href = trylMiniCart.checkoutUrl; };
+                    var checkoutUrl = (typeof trylMiniCart !== 'undefined' && trylMiniCart.checkoutUrl) ? trylMiniCart.checkoutUrl : '/checkout/';
+                    targetBtn.onclick = function (e) { e.preventDefault(); window.location.href = checkoutUrl; };
                 }, 1500);
 
                 if (typeof gsap !== 'undefined') {
@@ -315,36 +326,25 @@ document.addEventListener("DOMContentLoaded", function() {
                     }
                 }
                 
-                // Refresh Mini Cart
-                fetch(trylCoreSettings.ajaxurl + '?action=tryl_refresh_minicart')
-                .then(r => r.json())
-                .then(res => {
-                    if (res.success) {
-                        var itemsEl = document.getElementById('trylMcItems');
-                        var subtotalEl = document.getElementById('trylMcSubtotal');
-                        var footerEl = document.getElementById('trylMcFooter');
-                        if (itemsEl) itemsEl.innerHTML = res.data.html;
-                        if (subtotalEl) subtotalEl.innerHTML = res.data.subtotal;
-                        if (footerEl) footerEl.style.display = res.data.count > 0 ? '' : 'none';
-                        
-                        document.querySelectorAll('.tryl-cart-count').forEach(el => el.textContent = res.data.count);
-                        document.querySelectorAll('.tryl-cart-count-badge').forEach(el => el.style.display = res.data.count > 0 ? 'flex' : 'none');
-                        
-                        if (trylCoreSettings.autoOpen === '1' && typeof window.trylOpenCart === 'function') {
-                            window.trylOpenCart();
-                        }
-                    }
-                });
+                // Refresh Mini Cart using the globally exposed function
+                if (typeof window.trylRefreshCart === 'function') {
+                    window.trylRefreshCart(function () {
+                        // Open cart after it has been refreshed
+                        if (trylCoreSettings.autoOpen === '1' && typeof window.trylOpenCart === 'function') window.trylOpenCart();
+                    });
+                }
             } else {
-                targetBtn.innerHTML = 'Error';
+                const errorMessage = res.data && res.data.message ? res.data.message : 'Error adding item.';
+                targetBtn.innerHTML = `<span style="color: #d63638; font-size: 0.9em;">${errorMessage}</span>`;
                 targetBtn.classList.remove('loading');
-                setTimeout(() => { targetBtn.innerHTML = ogText; }, 2000);
+                setTimeout(() => { targetBtn.innerHTML = ogText; }, 3500);
             }
         })
         .catch(err => {
-            targetBtn.innerHTML = 'Error';
+            console.error('Add to Cart AJAX Error:', err);
+            targetBtn.innerHTML = '<span style="color: #d63638;">Network Error</span>';
             targetBtn.classList.remove('loading');
-            setTimeout(() => { targetBtn.innerHTML = ogText; }, 2000);
+            setTimeout(() => { targetBtn.innerHTML = ogText; }, 3500);
         });
     }
 });
