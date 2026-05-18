@@ -121,6 +121,18 @@ if ( ! $checkout->is_registration_enabled() && $checkout->is_registration_requir
                     </div>
                     <?php endif; ?>
                 </div>
+                
+                <?php if ( get_option('tryl_checkout_newsletter_optin', '0') === '1' && get_option('tryl_newsletter_provider', 'none') !== 'none' ) : ?>
+                <div class="tryl-sidebar-addons" style="margin-top: 16px; padding-top: 16px;">
+                    <div class="feature-item" style="border: none; padding: 0;">
+                        <span class="feature-label" id="label-newsletter" style="color: var(--txt); font-weight: 600;"><?php echo esc_html(get_option('tryl_checkout_optin_label', 'Keep me updated on news and exclusive offers')); ?></span>
+                        <label class="nike-switch" for="tryl_newsletter_optin">
+                            <input type="checkbox" id="tryl_newsletter_optin" role="switch" aria-labelledby="label-newsletter" name="tryl_newsletter_optin" value="1" checked>
+                            <span class="nike-switch-inner" aria-hidden="true"></span>
+                        </label>
+                    </div>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 

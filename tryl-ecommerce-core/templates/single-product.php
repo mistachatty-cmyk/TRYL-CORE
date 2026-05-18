@@ -309,9 +309,15 @@ while ( have_posts() ) :
                         $total_sales = (int) get_post_meta( $product->get_id(), 'total_sales', true );
                         $created_date = $product->get_date_created() ? $product->get_date_created()->getTimestamp() : 0;
                         $days_old = ( current_time('timestamp') - $created_date ) / DAY_IN_SECONDS;
-                        if ( $total_sales >= (int)get_option('tryl_badges_bestseller_sales', 50) ) {
+                        
+                        $bestseller_thresh = (int) get_option('tryl_badges_bestseller_sales', 50);
+                        if ($bestseller_thresh <= 0) $bestseller_thresh = 50;
+                        $new_days_thresh = (int) get_option('tryl_badges_new_days', 14);
+                        if ($new_days_thresh <= 0) $new_days_thresh = 14;
+                        
+                        if ( $total_sales > 0 && $total_sales >= $bestseller_thresh ) {
                             $badge_text = 'Bestseller'; $b_cls .= ' dynamic-badge';
-                        } elseif ( $created_date && $days_old <= (int)get_option('tryl_badges_new_days', 14) ) {
+                        } elseif ( $created_date && $days_old <= $new_days_thresh ) {
                             $badge_text = 'New Drop'; $b_cls .= ' dynamic-badge';
                         }
                     }

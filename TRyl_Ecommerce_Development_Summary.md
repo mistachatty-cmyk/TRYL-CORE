@@ -207,6 +207,10 @@ Implemented the **TRYL Mockup Generation Engine** with a "Smart Fallback Valve".
 - **Analytics & Reports Dashboard:** Implemented a new dashboard tab fetching live WP_Query data to monitor synced products, routed orders, and catalog sync health.
 - **Data & Migration Tools:** Added a dedicated tab for bulk JSON settings export, orphaned database cleanup, and 1-click manual catalog syncs to complete Phase 5.
 - **LokConnect API:** Built a secure REST API namespace (`tryl/v1`) designed specifically to feed live WooCommerce/Printful stats directly into a future LokServices Chrome Extension.
+- **Advanced Typography & PDF Engine:** Implemented a granular CSS Variable Token system allowing distinct typography for Hero, Nav, and Buttons, complete with a Live Preview Scroller in the dashboard. Designed `@media print` rules so the documentation tab naturally exports into a clean, enterprise-grade PDF manual.
+- **Native Marketing Integrations:** Integrated Mailchimp and Klaviyo APIs directly into the core. Upgraded the Exit-Intent popup to subscribe users silently via AJAX and added a gorgeous newsletter opt-in toggle to the checkout sidebar.
+- **Gutenberg Dual-Engine (Phase 6):** Scaffolded the React/Webpack environment to port all legacy shortcodes (Hero, 3D Shop, Prayer Form, Prayer Wall) into Server-Side Rendered (SSR) Gutenberg Blocks, allowing live previews inside the WordPress visual editor without breaking backend Printful automated logic.
+- **Order Progress Visualizer:** Added an interactive, SVG-powered delivery timeline to the customer's "My Account" dashboard that visually syncs with Printful's routing status.
 
 ## Current Status
 
@@ -231,6 +235,10 @@ Implemented the **TRYL Mockup Generation Engine** with a "Smart Fallback Valve".
 ✅ Sandbox Mode & Data Purge - Allows completely safe end-to-end testing without actual Printful fulfillment charges
 ✅ Bulk Migration Tools - Built JSON export, database cleanup, and manual bulk sync triggers (Phase 5 complete)
 ✅ LokConnect API - Headless REST API bridge created for future Chrome Extension ecosystem
+✅ Advanced Typography Engine - Decoupled CSS hierarchy into granular tokens. Added LokConnect `/sync-font` endpoint and Live Preview Scroller.
+✅ Native Marketing APIs - Directly connected Mailchimp & Klaviyo to popups and checkout logic.
+✅ Gutenberg Block Suite - Completed Phase 6, wrapping all visual shortcodes into live React-powered Gutenberg blocks.
+✅ Customer Dashboard Tracking - Added the Order Progress Visualizer to the "My Account" view.
 
 ### Files Currently Modified (Local)
 - `tryl-ecommerce-core/tryl-ecommerce-core.php` - Main plugin with all features
@@ -360,7 +368,55 @@ Implemented the **TRYL Mockup Generation Engine** with a "Smart Fallback Valve".
     - "Force Full Sync" AJAX trigger for immediate catalog alignment
     - Database cleanup utilities for orphaned Printful metadata
 
+## Commercial SaaS Evolution: Antigravity, OpenCode, & LokBridge
+TRYL is designed to transcend a standard WordPress plugin and become a **Commercial SaaS Platform** powered by AI (Antigravity/OpenCode) and distributed via LokBridge.
+
+### The OTA (Over-The-Air) Intelligence Network
+LokBridge is not just a deployment script; it is a monetization vector. Store owners can subscribe to an "AI Developer Plan". When Antigravity or OpenCode generates a new feature, optimization, or MCP ruleset, LokBridge securely broadcasts that code update across all client sites simultaneously.
+
+### 1. LokServices Hub (The Admin Dashboard)
+The core architecture features a secure, cryptographic REST API bridge (`/wp-json/tryl/v1/`) to support the **LokServices Hub Chrome Extension**.
+- **Live Store Stats** (`GET /ecosystem-stats`): Returns JSON payload containing the unfulfilled Printful order count, total synced products, and active Sandbox Status.
+- **Cloud Font Sync** (`POST /sync-font`): A receptor endpoint that accepts a font family name and `@font-face` CSS payload. It permanently injects the designer's external `.woff2` font directly into the WordPress typography engine, overwriting the master active font instantly.
+
+#### Recommended Extension Features:
+- **Live Fulfillment Ticker**: Red badge rendering unfulfilled Printful orders.
+- **Sandbox Safety Alert**: Visual alarm if a store is accidentally left in Draft mode.
+- **Font "Push" Mechanism**: Instantly inject cloud fonts from LokServices to a client's site.
+- **WhatsApp/Prayer Terminal**: Reply to customers from Chrome without opening WordPress.
+
+### 2. Antigravity MCP Distribution (Model Context Protocols)
+Future features will rely on distributing dynamic AI rulesets to clients. By embedding MCP instructions into the plugin code, LokBridge ensures that any local AI assistant on a client's computer understands the exact architectural rules of the TRYL ecosystem.
+
 ## Preparation for AI Assistance
+
+### Required AI Skills, MCPs, and Core Archive Directives
+Future AI assistants (and human developers) interacting with this ecosystem must archive and utilize the following technical skills and architectural protocols:
+
+#### 1. WooCommerce Deep Routing (FSE Bypass)
+- **Skill:** Modern WooCommerce (8.0+) aggressively forces Gutenberg blocks (FSE). AI must understand how to bypass this using the "Scorched-Earth" method.
+- **Protocol:** Use `add_filter('woocommerce_has_block_template', '__return_false', 99999);` to disable FSE.
+- **Protocol:** Use `wc_get_template` at priority `99999` to intercept template paths before standard theme resolution, falling back to `template_include` only for non-WooCommerce pages.
+
+#### 2. Premium UI / UX (GSAP Integration)
+- **Skill:** The TRYL ecosystem uses GSAP 3.12+ for all complex state changes, reserving standard CSS for layout and basic hover states.
+- **Protocol:** Ensure `gsap.min.js` is enqueued/deferred properly.
+- **Protocol:** Use `gsap.timeline()` for sequenced entrances (e.g., checkout grids, mini-cart overlays) and `ScrollTrigger` for scroll-linked animations. Avoid heavy jQuery animations.
+
+#### 3. Headless REST API & Extensibility (LokConnect)
+- **Skill:** Extending the platform for external applications (like the LokServices Chrome Extension or external AI generators).
+- **Protocol:** Use `register_rest_route` under the `tryl/v1` namespace.
+- **Protocol:** Secure endpoints using cryptographic headers (e.g., `X-TRYL-Extension-Key`) rather than standard WP cookies if the request originates from a headless client/extension.
+
+#### 4. Security & Optimization (Transients & Nonces)
+- **Skill:** Protecting the WooCommerce database from CSRF attacks and heavy query loads.
+- **Protocol:** All Admin AJAX handlers MUST include `check_ajax_referer('tryl_admin_actions', 'security');`.
+- **Protocol:** Any headless REST API endpoint performing heavy `WP_Query` operations (like counting orders or post meta) MUST be wrapped in a Transient cache (`set_transient`, `get_transient`) with a minimum 5-minute expiration to prevent DDoS or performance degradation.
+
+#### 5. Printful Automated Pipeline (Draft vs Confirm)
+- **Skill:** Understanding Printful's external fulfillment API architecture.
+- **Protocol:** Printful API requests to `/orders` default to unpaid drafts. AI must append `?confirm=1` to the endpoint for live automated fulfillment.
+- **Protocol:** "Sandbox Mode" testing must intentionally drop the `confirm` flag and attach the `_tryl_is_test_order` meta tag to WP orders for safe data purging.
 
 ### Code Conventions
 - **Prefixing**: All custom functions use `tryl_` or `tryl_printful_` prefix

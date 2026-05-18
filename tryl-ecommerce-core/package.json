@@ -1,0 +1,13 @@
+{
+  "name": "tryl-ecommerce-core-blocks",
+  "version": "3.12.0",
+  "description": "TRYL Native Gutenberg Block Builder Engine",
+  "main": "build/index.js",
+  "scripts": {
+    "build": "wp-scripts build",
+    "start": "wp-scripts start"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^26.0.0"
+  }
+}

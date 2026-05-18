@@ -1,13 +1,60 @@
 C:\Users\glory\.gemini\antigravity\scratch\tryl-ecommerce-core\tryl-ecommerce-core.php# Changelog
 
-All notable changes to the TRYL E-Commerce Core plugin and associated templates will be documented in this file.
+All notable changes to the TRYL Premium E-Commerce Core will be documented here.
+
+## [3.15.0]
+
+### Added
+- Customer Order Progress Visualizer: Added a responsive, SVG-powered visual progress tracker to the WooCommerce "View Order" page in the customer dashboard (My Account). Customers can now visually track their order from "Placed" -> "Production" -> "Shipped", heavily reducing customer support inquiries.
+
+## [3.14.0]
+
+### Added
+- Gutenberg Block Suite Completion (Phase 6): Officially bridged the Prayer System (both the Form and the Public Wall) into the React-powered Gutenberg environment. Clients can now drag-and-drop the Prayer Wall into pages and see live masonry grid previews securely in the backend.
+
+## [3.13.0]
+
+### Added / Optimized
+- Native Welcome Automations (CRM): You can now automatically fire an instant Welcome Email and Welcome SMS (via Twilio) the moment someone subscribes to your newsletter list!
+- Extensive Marketing Customizations: The entire messaging ecosystem is now fully editable from the dashboard. You can customize the Exit-Intent Popup success message, the Checkout opt-in label, and set default messaging (e.g., "Find Out When New Bless's Are In!").
+
+## [3.12.0] - The Automation & Stability Update
+
+### ✨ New Features & Enhancements
+- **Native Marketing Automations:** You can now connect Mailchimp and Klaviyo directly inside the TRYL dashboard! We added a premium toggle to the checkout sidebar, allowing your customers to easily subscribe to newsletters during their purchase.
+- **AJAX Exit-Intent Popup:** We upgraded your exit popup. When customers enter their email, it submits instantly in the background without reloading the page or opening annoying new tabs.
+- **LokBridge OTA Network:** We officially integrated the LokBridge distribution network. Your store will now automatically receive secure, over-the-air (OTA) updates directly from our private servers, exactly like official WordPress plugins!
+
+### 🐛 Bug Fixes & Optimizations
+- **Fixed Checkout Freezing:** Previously, if Mailchimp's servers were slow, your customers' checkout wheel would spin indefinitely. We completely rewrote this logic to be "Asynchronous." Now, the customer's order completes instantly, and the system adds them to Mailchimp 10 seconds later in the background. Blazing fast!
+- **Fixed Dashboard Slowdowns:** We re-enabled background caching for the LokBridge updater to prevent it from slowing down your WordPress admin dashboard while checking for new updates.
+
+## [3.11.0]
+
+### Added / Optimized
+- Granular Typography Engine: Decoupled the font architecture into CSS variable tokens, adding granular targets for `Hero Headline`, `Navigation`, and `Buttons`. Fallback inheritance handles empty states safely.
+- Live Font Scroller: Built an animated marquee into the dashboard that dynamically updates its font-family based on the user's inputs to preview Custom or Lok Extension fonts in real-time.
+- LokConnect Font Receptor API: Created the `POST /tryl/v1/sync-font` endpoint. This allows the future Chrome Extension to automatically inject cloud fonts directly into the WordPress styling engine.
+- PDF Engine Polish: Built dedicated `@media print` CSS rules into the admin dashboard so that clicking the "Download Documentation as PDF" button yields a perfectly formatted, paginated technical manual without any sidebar clutter.
+
+## [3.10.0]
+
+### Added / Optimized
+- Enterprise Security Polish: Implemented stringent CSRF `check_ajax_referer` nonces for all sensitive Admin AJAX handlers (Data Purge, DB Cleanup, Force Sync).
+- LokConnect API Optimization: Wrapped the headless `/tryl/v1/ecosystem-stats` REST endpoint in a 5-minute caching Transient. This prevents the Chrome Extension from degrading site performance by caching heavy `WP_Query` meta lookups.
+
+## [3.9.0]
+
+### Added
+- Advanced Typography Manager: Added a system filter to securely allow WordPress Media Library uploads for `.ttf`, `.woff`, and `.woff2` font files. Added custom `@font-face` CSS editors and explicit Font Family target inputs.
+- Lok Font Cloud Sync: Added the UI scaffolding in the Design tab to allow the upcoming LokServices Chrome Extension to push fonts directly into the WordPress ecosystem.
 
 ## [3.8.0]
 
 ### Added
 - LokConnect Extension API: Registered headless REST endpoint (`/tryl/v1/ecosystem-stats`) guarded by a custom cryptographic header token (`X-TRYL-Extension-Key`). Prepares the store to integrate natively with a future LokServices Chrome Extension for live remote analytics monitoring.
 
-'## [3.7.0]
+## [3.7.0]
 
 ### Added
 - Data & Migration Tab (Phase 5): Added a dedicated tab for backend database management.
