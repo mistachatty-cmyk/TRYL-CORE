@@ -105,6 +105,100 @@ body::before{content:'';display:block;height:64px;}
 
 /* 5. Mini Cart Drawer */
 :root { --mc-header-font: var(--tryl-header-font); --mc-body-font: var(--tryl-body-font); --mc-radius: 0px; --mc-btn-radius: 0px; --mc-shadow: 0 0 40px rgba(0,0,0,0.08); }
+
+/* 6. Checkout Styles */
+.tryl-checkout-sidebar {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border, #d4e0d4);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 32px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.tryl-order-summary-box {
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border, #d4e0d4);
+    border-radius: 12px;
+    padding: 24px;
+}
+
+#order_review {
+    margin-top: 16px;
+}
+
+.tryl-sidebar-addons {
+    margin-top: 24px;
+}
+
+.feature-item {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-light, #eee);
+}
+
+.feature-item:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.feature-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted, #6b7c6b);
+    margin-bottom: 4px;
+}
+
+.nike-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.nike-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.nike-switch-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border, #d4e0d4);
+    transition: .4s;
+    border-radius: 24px;
+}
+
+.nike-switch-inner:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .nike-switch-inner {
+    background-color: var(--accent, #31d190);
+}
+
+input:checked + .nike-switch-inner:before {
+    transform: translateX(20px);
+}
+
+.tryl-update-checkout {
+    margin-left: 8px;
+    vertical-align: middle;
+}
 .tryl-mc-overlay{position:fixed;inset:0;z-index:99998;background:var(--mc-overlay);opacity:0;visibility:hidden;transition:opacity .35s,visibility .35s;will-change:opacity,visibility;}
 .tryl-mc-overlay.open{opacity:1;visibility:visible;}
 .tryl-mc-drawer{position:fixed;top:0;right:0;bottom:0;z-index:99999;width:420px;max-width:92vw;background:var(--mc-bg);box-shadow:var(--mc-shadow);display:flex;flex-direction:column;transform:translateX(100%);font-family:var(--mc-body-font);color:var(--mc-text);will-change:transform;}

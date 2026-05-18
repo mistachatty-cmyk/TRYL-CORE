@@ -272,7 +272,7 @@ function tryl_editorial_shop_shortcode( $atts ) {
             $is_var  = $product->is_type( 'variable' );
             $is_in_stock = $product->is_in_stock();
             $buy_url = $is_var ? $purl : add_query_arg( 'add-to-cart', $pid, wc_get_checkout_url() );
-            $btn_txt = $is_var ? 'Choose Size' : 'Buy Now';
+            $btn_txt = $is_var ? 'Quick Add' : 'Buy Now';
             
             if ( ! $is_in_stock ) {
                 $btn_txt = 'Sold Out';
@@ -358,7 +358,7 @@ function tryl_editorial_shop_shortcode( $atts ) {
               </a>
 
               <div class="te-card-actions">
-                <a href="<?php echo esc_url($buy_url); ?>" class="te-action-buy">
+                <a href="<?php echo esc_url($buy_url); ?>" class="te-action-buy <?php echo $is_var ? 'tryl-quick-add-trigger' : ''; ?>">
                   <?php echo esc_html($btn_txt); ?>
                 </a>
                 <a href="<?php echo esc_url($purl); ?>" class="te-action-view">View</a>
@@ -398,9 +398,8 @@ function tryl_editorial_shop_shortcode( $atts ) {
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
                       <span>Size</span>
                     </button>
-                    <div class="tryl-inline-var-dropdown" style="display:none; position:absolute; bottom:calc(100% + 12px); right:0; background:var(--te-card); border:1px solid var(--te-sand); box-shadow:0 12px 36px rgba(0,0,0,0.15); z-index:100; padding:16px; border-radius:12px; min-width:220px; transform-origin:bottom right;">
-                        <div style="font-size:0.6rem; font-weight:800; color:var(--te-stone); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px; text-align:center;">Select Size</div>
-                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(44px, 1fr)); gap:8px; max-height:240px; overflow-y:auto; padding-right:4px;">
+                    <div class="tryl-inline-var-dropdown" style="display:none; width:100%; margin-top:8px;">
+                        <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-height:240px; overflow-y:auto;">
                         <?php 
                         $has_in_stock = false;
                         foreach ( $available_variations as $var ) : 
@@ -413,7 +412,7 @@ function tryl_editorial_shop_shortcode( $atts ) {
                             }
                             $label = implode(' / ', $attr_vals) ?: 'Option';
                         ?>
-                            <button class="te-atc-variation tryl-atc-variation" data-pid="<?php echo $pid; ?>" data-vid="<?php echo $var['variation_id']; ?>" type="button" style="padding:10px 4px; background:var(--te-cream); border:1px solid var(--te-sand); cursor:pointer; font-family:'Inter',sans-serif; font-size:0.75rem; font-weight:700; text-transform:uppercase; color:var(--te-ink); transition:all 0.2s; border-radius:6px; text-align:center; display:flex; align-items:center; justify-content:center;">
+                            <button class="te-atc-variation tryl-atc-variation" data-pid="<?php echo $pid; ?>" data-vid="<?php echo $var['variation_id']; ?>" type="button" style="padding:8px 12px; background:var(--te-cream); border:1px solid var(--te-sand); cursor:pointer; font-family:'Inter',sans-serif; font-size:0.75rem; font-weight:700; text-transform:uppercase; color:var(--te-ink); transition:all 0.2s; border-radius:40px; flex: 1 1 auto; text-align:center; display:flex; align-items:center; justify-content:center;">
                                 <?php echo esc_html( $label ); ?>
                             </button>
                         <?php endforeach; 

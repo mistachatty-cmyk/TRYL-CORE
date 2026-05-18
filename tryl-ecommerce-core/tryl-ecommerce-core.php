@@ -2,11 +2,13 @@
 /**
  * Plugin Name: TRYL Premium E-Commerce Core Universal
  * Description: All-in-one TRYL shop engine. Nike-inspired product pages, premium cart/checkout, and global nav enhancement.
- * Version: 3.16
+ * Version: 3.18
  * Author: EHDesigns | Powered by LokServices
  * 
  * CHANGELOG:
- * 3.16 - Added Premium Nike-Inspired inline sizing grid morphs, slide-out size drawers, interactive feedbacks, and mini-cart slide triggers.
+ * 3.18 - Added Shop Grid Columns configuration setting to the dashboard.
+ * 3.17 - Fixed critical JS bugs in the morphing ATC button and unified the Quick Add UX.
+ * 3.16 - Added Public Order Tracker (Beta) shortcode and Gutenberg block.
  * 3.15 - Added Customer Order Progress Visualizer to the WooCommerce My Account dashboard.
  * 3.14 - Gutenberg Suite Completion: Wrapped the Prayer Request Form and Prayer Wall into native visual blocks.
  * 3.13 - Added Native Welcome CRM Automations (Email/SMS) and deep customization for opt-in messaging.
@@ -35,10 +37,7 @@ function tryl_core_enqueue_assets() {
           'ajaxurl' => admin_url( 'admin-ajax.php' ),
           'btnText' => get_option('tryl_atc_btn_text', 'Added!'),
           'checkoutAnimations' => get_option('tryl_checkout_animations', '1'),
-          'isCartOrCheckout' => (function_exists('is_cart') && (is_cart() || is_checkout())) ? '1' : '0',
-          'sizeSelectorStyle' => get_option('tryl_size_selector_style', 'buttons'),
-          'sizeBtnFeedback' => get_option('tryl_size_btn_feedback', 'glow'),
-          'cartActivationStyle' => get_option('tryl_cart_activation_style', 'drawer')
+          'isCartOrCheckout' => (function_exists('is_cart') && (is_cart() || is_checkout())) ? '1' : '0'
       ]);
 }
 add_action( 'wp_enqueue_scripts', 'tryl_core_enqueue_assets' );
@@ -51,7 +50,8 @@ function tryl_localize_inline_minicart() {
         ajaxurl: '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>',
         btnText: '<?php echo esc_js( get_option('tryl_atc_btn_text', 'Added!') ); ?>',
         autoOpen: '<?php echo esc_js( get_option('tryl_auto_open_cart', '1') ); ?>',
-        animEffect: '<?php echo esc_js( get_option('tryl_cart_anim_effect', 'scale') ); ?>'
+        animEffect: '<?php echo esc_js( get_option('tryl_cart_anim_effect', 'scale') ); ?>',
+        checkoutUrl: '<?php echo esc_js( function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : home_url('/checkout/') ); ?>'
     };
     </script>
     <?php
@@ -72,7 +72,8 @@ function tryl_global_fonts() {
         $custom_css = get_option('tryl_custom_font_css', '');
         
         if ( ! empty( $custom_css ) ) {
-            echo '<style>' . wp_kses_post($custom_css) . '</style>';
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            echo '<style>' . wp_strip_all_tags( $custom_css ) . '</style>';
         }
     } else {
         $fonts_url = 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Inter:wght@300;400;500;600;700&display=swap';
@@ -98,13 +99,28 @@ add_action('wp_head', 'tryl_global_fonts', 1);
 
 // ─── 0.5 ALLOW FONT UPLOADS TO MEDIA LIBRARY ─────────────────────────────────
 function tryl_allow_font_mimes( $mimes ) {
-    $mimes['ttf']   = 'font/ttf';
-    $mimes['woff']  = 'font/woff';
-    $mimes['woff2'] = 'font/woff2';
-    $mimes['otf']   = 'font/otf';
+    if ( current_user_can( 'manage_options' ) ) {
+        $mimes['ttf']   = 'font/ttf';
+        $mimes['woff']  = 'font/woff';
+        $mimes['woff2'] = 'font/woff2';
+        $mimes['otf']   = 'font/otf';
+    }
     return $mimes;
 }
 add_filter( 'upload_mimes', 'tryl_allow_font_mimes' );
+
+// ─── 0.6 BYPASS STRICT MIME SNIFFING FOR FONTS ───────────────────────────────
+function tryl_correct_font_filetypes( $types, $file, $filename, $mimes ) {
+    if ( current_user_can( 'manage_options' ) ) {
+        $ext = pathinfo( $filename, PATHINFO_EXTENSION );
+        if ( in_array( strtolower( $ext ), ['ttf', 'woff', 'woff2', 'otf'] ) ) {
+            $types['ext']  = strtolower( $ext );
+            $types['type'] = 'font/' . strtolower( $ext );
+        }
+    }
+    return $types;
+}
+add_filter( 'wp_check_filetype_and_ext', 'tryl_correct_font_filetypes', 10, 4 );
 
 // ─── 1. BULLETPROOF TEMPLATE ROUTING & FSE BLOCK DISABLE ─────────────────────
 
@@ -263,7 +279,7 @@ function tryl_get_core_product_card_html( $product ) {
     $is_var   = $product->is_type('variable');
     $is_in_stock = $product->is_in_stock();
     $buy_url  = $is_var ? $purl : add_query_arg('add-to-cart',$pid,wc_get_checkout_url());
-    $btn_txt  = $is_var ? 'Choose Size' : 'Buy Now';
+    $btn_txt  = $is_var ? 'Quick Add' : 'Buy Now';
     if ( ! $is_in_stock ) {
         $btn_txt = 'Sold Out';
         $buy_url = $purl;
@@ -331,7 +347,7 @@ function tryl_get_core_product_card_html( $product ) {
         <?php endif; ?>
         <img src="<?php echo esc_url($img);?>" alt="<?php echo esc_attr($product->get_name());?>" loading="lazy">
         <div class="tryl-card-overlay">
-          <a href="<?php echo esc_url($buy_url);?>" class="tryl-card-buy"><?php echo esc_html($btn_txt);?></a>
+          <a href="<?php echo esc_url($buy_url);?>" class="tryl-card-buy <?php echo $is_var ? 'tryl-quick-add-trigger' : ''; ?>"><?php echo esc_html($btn_txt);?></a>
           <a href="<?php echo esc_url($purl);?>" class="tryl-card-view">View Details</a>
         </div>
       </div>
@@ -363,9 +379,8 @@ function tryl_get_core_product_card_html( $product ) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
             <span>Select Size</span>
           </button>
-          <div class="tryl-inline-var-dropdown" style="display:none; position:absolute; bottom:calc(100% + 12px); right:0; background:var(--card-bg); border:1px solid var(--border); box-shadow:0 14px 40px rgba(0,0,0,0.15); z-index:100; padding:16px; border-radius:8px; min-width:220px; transform-origin:bottom right;">
-              <div style="font-size:0.65rem; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:12px; text-align:center;">Select Size</div>
-              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(44px, 1fr)); gap:8px; max-height:240px; overflow-y:auto; padding-right:4px;">
+          <div class="tryl-inline-var-dropdown" style="display:none; width:100%; margin-top:8px;">
+              <div style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-height:240px; overflow-y:auto;">
               <?php 
               $has_in_stock = false;
               foreach ( $available_variations as $var ) : 
@@ -378,7 +393,7 @@ function tryl_get_core_product_card_html( $product ) {
                   }
                   $label = implode(' / ', $attr_vals) ?: 'Option';
               ?>
-                  <button class="tryl-atc-variation" data-pid="<?php echo $pid; ?>" data-vid="<?php echo $var['variation_id']; ?>" type="button" style="padding:10px 4px; background:var(--off); border:1px solid var(--border); cursor:pointer; font-family:var(--tryl-body-font); font-size:0.75rem; font-weight:700; text-transform:uppercase; color:var(--txt); transition:all 0.2s; border-radius:4px; text-align:center; display:flex; align-items:center; justify-content:center;">
+                  <button class="tryl-atc-variation" data-pid="<?php echo $pid; ?>" data-vid="<?php echo $var['variation_id']; ?>" type="button" style="padding:8px 12px; background:var(--off); border:1px solid var(--border); cursor:pointer; font-family:var(--tryl-body-font); font-size:0.75rem; font-weight:700; text-transform:uppercase; color:var(--txt); transition:all 0.2s; border-radius:40px; flex: 1 1 auto; text-align:center; display:flex; align-items:center; justify-content:center;">
                       <?php echo esc_html( $label ); ?>
                   </button>
               <?php endforeach; 
@@ -406,6 +421,7 @@ function tryl_core_3d_shop_shortcode() {
     if ( ! class_exists( 'WooCommerce' ) ) return '<p>WooCommerce required.</p>';
     ob_start();
     $limit = get_option('tryl_shop_grid_limit', 32);
+    $columns = (int) get_option('tryl_shop_grid_columns', 4);
     $signature = get_option('tryl_developer_signature', 'Made by EHDesigns and powered by LokServices');
     $badges_active = get_option('tryl_badges_active');
     $badges_new_days = (int) get_option('tryl_badges_new_days', 14);
@@ -468,9 +484,10 @@ function tryl_core_3d_shop_shortcode() {
     .tryl-filter{padding:8px 20px;font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid var(--border);background:transparent;color:var(--txt);cursor:pointer;transition:all .2s;}
     .tryl-filter:hover{border-color:var(--dark);}
     .tryl-filter.active{background:var(--dark);color:var(--btn-txt);border-color:var(--dark);}
-    .tryl-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;}
-    @media(max-width:1100px){.tryl-grid{grid-template-columns:repeat(3,1fr);}}
-    @media(max-width:700px){.tryl-grid{grid-template-columns:repeat(2,1fr);}}
+    .tryl-grid{display:grid;grid-template-columns:repeat(<?php echo esc_attr($columns); ?>,1fr);gap:2px;}
+    <?php if ($columns > 4) echo '@media(max-width:1300px){.tryl-grid{grid-template-columns:repeat(4,1fr);}}'; ?>
+    <?php if ($columns > 3) echo '@media(max-width:1100px){.tryl-grid{grid-template-columns:repeat(3,1fr);}}'; ?>
+    <?php if ($columns > 2) echo '@media(max-width:700px){.tryl-grid{grid-template-columns:repeat(2,1fr);}}'; ?>
     @media(max-width:460px){.tryl-grid{grid-template-columns:1fr;}}
     .tryl-card{background:var(--card-bg);border:1px solid var(--border);display:flex;flex-direction:column;transition:transform .3s,box-shadow .3s;position:relative;will-change:transform,opacity,box-shadow;}
     .tryl-card:hover{transform:translateY(-5px);box-shadow:0 20px 50px rgba(0,0,0,.09);}
@@ -2386,7 +2403,7 @@ function tryl_process_checkout_newsletter_optin($order_id, $posted_data, $order)
 }
 
 // The Background Processor for Newsletter Opt-ins
-add_action('tryl_async_newsletter_optin', 'tryl_execute_async_newsletter_optin');
+add_action('tryl_async_newsletter_optin', 'tryl_execute_async_newsletter_optin', 10, 3);
 function tryl_execute_async_newsletter_optin( $email, $phone = '', $first_name = '' ) {
     $provider = get_option('tryl_newsletter_provider', 'none');
     
@@ -2396,14 +2413,27 @@ function tryl_execute_async_newsletter_optin( $email, $phone = '', $first_name =
         if ( !empty($api_key) && !empty($list_id) ) {
             $dc = explode('-', $api_key)[1];
             $url = "https://{$dc}.api.mailchimp.com/3.0/lists/{$list_id}/members";
-            wp_remote_post( $url, [ 'headers' => [ 'Authorization' => 'Basic ' . base64_encode("user:$api_key"), 'Content-Type' => 'application/json' ], 'body' => wp_json_encode([ 'email_address' => $email, 'status' => 'subscribed' ]) ]);
+            
+            $mc_data = [ 'email_address' => $email, 'status' => 'subscribed' ];
+            if ( !empty($first_name) || !empty($phone) ) {
+                $mc_data['merge_fields'] = [];
+                if ( !empty($first_name) ) $mc_data['merge_fields']['FNAME'] = $first_name;
+                if ( !empty($phone) ) $mc_data['merge_fields']['PHONE'] = $phone;
+            }
+            
+            wp_remote_post( $url, [ 'headers' => [ 'Authorization' => 'Basic ' . base64_encode("user:$api_key"), 'Content-Type' => 'application/json' ], 'body' => wp_json_encode($mc_data) ]);
         }
     } elseif ( $provider === 'klaviyo' ) {
         $api_key = get_option('tryl_klaviyo_api');
         $list_id = get_option('tryl_klaviyo_list');
         if ( !empty($api_key) && !empty($list_id) ) {
             $url = "https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/";
-            $payload = [ "data" => [ "type" => "profile-subscription-bulk-create-job", "attributes" => [ "custom_source" => "TRYL Checkout", "profiles" => [ "data" => [ [ "type" => "profile", "attributes" => [ "email" => $email ] ] ] ] ], "relationships" => [ "list" => [ "data" => [ "type" => "list", "id" => $list_id ] ] ] ] ];
+            
+            $profile_attr = [ "email" => $email ];
+            if ( !empty($first_name) ) $profile_attr["first_name"] = $first_name;
+            if ( !empty($phone) ) $profile_attr["phone_number"] = $phone;
+            
+            $payload = [ "data" => [ "type" => "profile-subscription-bulk-create-job", "attributes" => [ "custom_source" => "TRYL Checkout", "profiles" => [ "data" => [ [ "type" => "profile", "attributes" => $profile_attr ] ] ] ] ], "relationships" => [ "list" => [ "data" => [ "type" => "list", "id" => $list_id ] ] ] ];
             wp_remote_post( $url, [ 'headers' => [ 'Authorization' => "Klaviyo-API-Key $api_key", 'Content-Type' => 'application/json', 'revision' => '2024-02-15' ], 'body' => wp_json_encode($payload) ]);
         }
     }
@@ -2462,6 +2492,13 @@ function tryl_register_custom_blocks() {
         'api_version'     => 2,
         'editor_script'   => 'tryl-blocks-editor-script',
         'render_callback' => 'tryl_prayer_wall_shortcode' 
+    ) );
+    
+    // Register the Order Tracker Block
+    register_block_type( 'tryl/order-tracker-block', array(
+        'api_version'     => 2,
+        'editor_script'   => 'tryl-blocks-editor-script',
+        'render_callback' => 'tryl_order_tracker_shortcode' 
     ) );
 }
 add_action( 'init', 'tryl_register_custom_blocks' );
@@ -2701,6 +2738,7 @@ function tryl_register_shortcodes() {
     add_shortcode( 'tryl_prayer_form', 'tryl_prayer_form_shortcode' );
     add_shortcode( 'tryl_prayer_request', 'tryl_prayer_form_shortcode' ); // Alias for convenience
     add_shortcode( 'tryl_prayer_wall', 'tryl_prayer_wall_shortcode' );
+    add_shortcode( 'tryl_order_tracker', 'tryl_order_tracker_shortcode' ); // Public Tracker
 }
 // Hook with early priority (5) to ensure registration before most page builders process content
 add_action( 'init', 'tryl_register_shortcodes', 5 );
@@ -2743,6 +2781,53 @@ function tryl_prayer_wall_shortcode() {
 }
 }
 
+// ─── 11.9 ORDER TRACKER (BETA) ───────────────────────────────────────────────
+if ( ! function_exists( 'tryl_order_tracker_shortcode' ) ) {
+function tryl_order_tracker_shortcode() {
+    if ( ! class_exists( 'WooCommerce' ) ) return '<p>WooCommerce required.</p>';
+    ob_start();
+    
+    $order_id = isset( $_REQUEST['order_id'] ) ? sanitize_text_field( $_REQUEST['order_id'] ) : '';
+    $order_email = isset( $_REQUEST['order_email'] ) ? sanitize_email( $_REQUEST['order_email'] ) : '';
+    $error = '';
+    $order = false;
+    
+    if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tryl_track_order']) ) {
+        if ( empty( $order_id ) || empty( $order_email ) ) {
+            $error = 'Please enter both your Order ID and Email Address.';
+        } else {
+            $order_id = str_replace( '#', '', $order_id );
+            $order = wc_get_order( $order_id );
+            if ( ! $order || strtolower( $order->get_billing_email() ) !== strtolower( $order_email ) ) {
+                $error = 'Sorry, we could not find an order matching that ID and email combination.';
+                $order = false;
+            }
+        }
+    }
+    ?>
+    <div class="tryl-order-tracker-wrap" style="max-width: 600px; margin: 0 auto; font-family: 'Inter', sans-serif;">
+        <?php if ( $error ) : ?><div style="background:#fde8e8; color:#9b1c1c; padding:16px; border-left:4px solid #9b1c1c; margin-bottom:24px; font-weight:500; border-radius:4px;"><?php echo esc_html( $error ); ?></div><?php endif; ?>
+        <?php if ( $order ) : ?>
+            <div style="background:var(--card-bg, #fff); border:1px solid var(--border, #d4e0d4); border-radius:12px; padding:32px; margin-bottom:24px; box-shadow:0 10px 30px rgba(0,0,0,0.03);">
+                <h3 style="margin-top:0; font-family:var(--tryl-header-font, sans-serif); text-transform:uppercase; color:var(--dark, #0d1b0f); font-size:1.6rem; margin-bottom:8px;">Order #<?php echo esc_html( $order->get_order_number() ); ?></h3>
+                <p style="color:var(--muted, #6b7c6b); font-size:0.85rem; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:32px; border-bottom:1px solid var(--border, #d4e0d4); padding-bottom:16px;">Placed on <?php echo wc_format_datetime( $order->get_date_created() ); ?></p>
+                <?php tryl_order_progress_visualizer( $order->get_id() ); ?>
+            </div>
+            <div style="text-align:center;"><a href="?" style="font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted, #6b7c6b); text-decoration:none; transition:color 0.2s;">&larr; Track Another Order</a></div>
+        <?php else : ?>
+            <form method="post" action="" style="background:var(--card-bg, #fff); border:1px solid var(--border, #d4e0d4); padding:40px 32px; border-radius:12px; box-shadow: 0 10px 30px rgba(0,0,0,0.03);">
+                <h3 style="margin-top:0; font-family:var(--tryl-header-font, sans-serif); text-transform:uppercase; font-size:1.8rem; color:var(--dark, #0d1b0f); margin-bottom:12px;">Track Your Order</h3>
+                <p style="color:var(--muted, #6b7c6b); font-size:0.95rem; margin-bottom:32px; line-height:1.6;">Enter your Order ID and the email address you used during checkout to see the current status of your shipment.</p>
+                <div style="margin-bottom:20px;"><label style="display:block; font-weight:700; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; color:var(--txt, #1a2e1a);">Order ID</label><input type="text" name="order_id" required placeholder="e.g. 12345" style="width:100%; padding:16px; border:1px solid var(--border, #d4e0d4); border-radius:8px; font-family:inherit; background:var(--bg, #f5f8f5);" value="<?php echo esc_attr($order_id); ?>"></div>
+                <div style="margin-bottom:32px;"><label style="display:block; font-weight:700; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; color:var(--txt, #1a2e1a);">Billing Email</label><input type="email" name="order_email" required placeholder="you@example.com" style="width:100%; padding:16px; border:1px solid var(--border, #d4e0d4); border-radius:8px; font-family:inherit; background:var(--bg, #f5f8f5);" value="<?php echo esc_attr($order_email); ?>"></div>
+                <button type="submit" name="tryl_track_order" value="1" style="width:100%; background:var(--dark, #0d1b0f); color:var(--btn-txt, #fff); border:none; padding:18px; font-weight:800; text-transform:uppercase; letter-spacing:0.15em; cursor:pointer; border-radius:40px; transition:all 0.3s;">Track Order</button>
+            </form>
+        <?php endif; ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+}
 
 if ( ! function_exists( 'tryl_hero_section_shortcode' ) ) {
 function tryl_hero_section_shortcode( $atts ) {
@@ -2806,11 +2891,16 @@ function tryl_register_admin_page() {
 add_action( 'admin_menu', 'tryl_register_admin_page' );
 
 function tryl_register_settings() {
-    $settings = ['tryl_default_theme', 'tryl_font_pack', 'tryl_shop_grid_limit', 'tryl_nav_active', 'tryl_nav_shop', 'tryl_nav_checkout', 'tryl_nav_mission', 'tryl_nav_prayer', 'tryl_nav_contact', 'tryl_nav_shipping', 'tryl_nav_faq', 'tryl_nav_privacy', 'tryl_nav_terms', 'tryl_footer_active', 'tryl_free_shipping_threshold', 'tryl_footer_desc', 'tryl_prayer_email', 'tryl_developer_signature', 'tryl_header_logo', 'tryl_printful_token', 'tryl_printful_sync_enabled', 'tryl_printful_sync_time', 'tryl_printful_auto_publish', 'tryl_printful_inventory_sync', 'tryl_announcement_active', 'tryl_announcement_text', 'tryl_announcement_url', 'tryl_announcement_bg', 'tryl_announcement_text_color', 'tryl_badges_active', 'tryl_badges_new_days', 'tryl_badges_bestseller_sales', 'tryl_badges_bg', 'tryl_badges_text_color', 'tryl_footer_layout_style', 'tryl_footer_hover_anim', 'tryl_footer_mobile_center', 'tryl_popup_active', 'tryl_popup_heading', 'tryl_popup_text', 'tryl_popup_action_url', 'tryl_popup_btn_text', 'tryl_nextgen_emails_active', 'tryl_email_hero_url', 'tryl_email_footer_msg', 'tryl_checkout_animations', 'tryl_hero_image', 'tryl_hero_text_left', 'tryl_hero_text_right', 'tryl_hero_btn_text', 'tryl_hero_btn_url', 'tryl_nike_checkout_active', 'tryl_nike_checkout_accent', 'tryl_nike_checkout_input_bg', 'tryl_premium_products_active', 'tryl_custom_404_active', 'tryl_prayer_auto_sub', 'tryl_prayer_auto_msg', 'tryl_checkout_features_active', 'tryl_gift_wrapping_fee', 'tryl_product_accordion_active', 'tryl_product_accordion_title', 'tryl_product_accordion_content', 'tryl_product_accordion_categories', 'tryl_atc_btn_text', 'tryl_atc_notice_active', 'tryl_atc_notice_text', 'tryl_sp_trust_badges_active', 'tryl_header_checkout_cta', 'tryl_floating_checkout_active', 'tryl_mobile_menu_align', 'tryl_social_instagram', 'tryl_social_tiktok', 'tryl_social_twitter', 'tryl_social_youtube', 'tryl_social_facebook', 'tryl_myaccount_reskin_active', 'tryl_order_bump_active', 'tryl_order_bump_label', 'tryl_order_bump_fee', 'tryl_auto_open_cart', 'tryl_cart_anim_effect', 'tryl_mockup_engine', 'tryl_printful_ps_email', 'tryl_printful_ps_phone', 'tryl_printful_ps_message', 'tryl_printful_ps_store_name', 'tryl_printful_live_shipping', 'tryl_whatsapp_token', 'tryl_whatsapp_phone_id', 'tryl_whatsapp_order_active', 'tryl_whatsapp_order_template', 'tryl_whatsapp_ship_active', 'tryl_whatsapp_ship_template', 'tryl_email_tracking_active', 'tryl_email_tracking_subject', 'tryl_email_tracking_body', 'tryl_wa_draft_text', 'tryl_admin_ui_primary', 'tryl_admin_ui_accent', 'tryl_admin_ui_bg', 'tryl_admin_ui_border', 'tryl_admin_ui_card', 'tryl_admin_ui_text', 'tryl_admin_ui_muted', 'tryl_target_margin', 'tryl_fulfillment_sla', 'tryl_printful_sandbox_mode', 'tryl_extension_key', 'tryl_custom_h_font', 'tryl_custom_b_font', 'tryl_custom_font_css', 'tryl_font_hero', 'tryl_font_nav', 'tryl_font_btn', 'tryl_newsletter_provider', 'tryl_mailchimp_api', 'tryl_mailchimp_list', 'tryl_klaviyo_api', 'tryl_klaviyo_list', 'tryl_checkout_newsletter_optin', 'tryl_popup_success_msg', 'tryl_checkout_optin_label', 'tryl_welcome_email_active', 'tryl_welcome_email_subject', 'tryl_welcome_email_body', 'tryl_welcome_sms_active', 'tryl_welcome_sms_body', 'tryl_size_selector_style', 'tryl_size_btn_feedback', 'tryl_cart_activation_style'];
+    $settings = ['tryl_default_theme', 'tryl_font_pack', 'tryl_shop_grid_limit', 'tryl_shop_grid_columns', 'tryl_nav_active', 'tryl_nav_shop', 'tryl_nav_checkout', 'tryl_nav_mission', 'tryl_nav_prayer', 'tryl_nav_contact', 'tryl_nav_shipping', 'tryl_nav_faq', 'tryl_nav_privacy', 'tryl_nav_terms', 'tryl_footer_active', 'tryl_free_shipping_threshold', 'tryl_footer_desc', 'tryl_prayer_email', 'tryl_developer_signature', 'tryl_header_logo', 'tryl_printful_token', 'tryl_printful_sync_enabled', 'tryl_printful_sync_time', 'tryl_printful_auto_publish', 'tryl_printful_inventory_sync', 'tryl_announcement_active', 'tryl_announcement_text', 'tryl_announcement_url', 'tryl_announcement_bg', 'tryl_announcement_text_color', 'tryl_badges_active', 'tryl_badges_new_days', 'tryl_badges_bestseller_sales', 'tryl_badges_bg', 'tryl_badges_text_color', 'tryl_footer_layout_style', 'tryl_footer_hover_anim', 'tryl_footer_mobile_center', 'tryl_popup_active', 'tryl_popup_heading', 'tryl_popup_text', 'tryl_popup_action_url', 'tryl_popup_btn_text', 'tryl_nextgen_emails_active', 'tryl_email_hero_url', 'tryl_email_footer_msg', 'tryl_checkout_animations', 'tryl_hero_image', 'tryl_hero_text_left', 'tryl_hero_text_right', 'tryl_hero_btn_text', 'tryl_hero_btn_url', 'tryl_nike_checkout_active', 'tryl_nike_checkout_accent', 'tryl_nike_checkout_input_bg', 'tryl_premium_products_active', 'tryl_custom_404_active', 'tryl_prayer_auto_sub', 'tryl_prayer_auto_msg', 'tryl_checkout_features_active', 'tryl_gift_wrapping_fee', 'tryl_product_accordion_active', 'tryl_product_accordion_title', 'tryl_product_accordion_content', 'tryl_product_accordion_categories', 'tryl_atc_btn_text', 'tryl_atc_notice_active', 'tryl_atc_notice_text', 'tryl_sp_trust_badges_active', 'tryl_header_checkout_cta', 'tryl_floating_checkout_active', 'tryl_mobile_menu_align', 'tryl_social_instagram', 'tryl_social_tiktok', 'tryl_social_twitter', 'tryl_social_youtube', 'tryl_social_facebook', 'tryl_myaccount_reskin_active', 'tryl_order_bump_active', 'tryl_order_bump_label', 'tryl_order_bump_fee', 'tryl_auto_open_cart', 'tryl_cart_anim_effect', 'tryl_mockup_engine', 'tryl_printful_ps_email', 'tryl_printful_ps_phone', 'tryl_printful_ps_message', 'tryl_printful_ps_store_name', 'tryl_printful_live_shipping', 'tryl_whatsapp_token', 'tryl_whatsapp_phone_id', 'tryl_whatsapp_order_active', 'tryl_whatsapp_order_template', 'tryl_whatsapp_ship_active', 'tryl_whatsapp_ship_template', 'tryl_email_tracking_active', 'tryl_email_tracking_subject', 'tryl_email_tracking_body', 'tryl_wa_draft_text', 'tryl_admin_ui_primary', 'tryl_admin_ui_accent', 'tryl_admin_ui_bg', 'tryl_admin_ui_border', 'tryl_admin_ui_card', 'tryl_admin_ui_text', 'tryl_admin_ui_muted', 'tryl_target_margin', 'tryl_fulfillment_sla', 'tryl_printful_sandbox_mode', 'tryl_extension_key', 'tryl_custom_h_font', 'tryl_custom_b_font', 'tryl_custom_font_css', 'tryl_font_hero', 'tryl_font_nav', 'tryl_font_btn', 'tryl_newsletter_provider', 'tryl_mailchimp_api', 'tryl_mailchimp_list', 'tryl_klaviyo_api', 'tryl_klaviyo_list', 'tryl_checkout_newsletter_optin', 'tryl_popup_success_msg', 'tryl_checkout_optin_label', 'tryl_welcome_email_active', 'tryl_welcome_email_subject', 'tryl_welcome_email_body', 'tryl_welcome_sms_active', 'tryl_welcome_sms_body'];
     foreach ($settings as $setting) {
         register_setting('tryl_settings_group', $setting);
     }
 }
+function tryl_sanitize_bestseller_threshold($value) {
+    $value = intval($value);
+    return max(10, $value);
+}
+
 add_action( 'admin_init', 'tryl_register_settings' );
 
 add_action( 'admin_notices', 'tryl_sandbox_admin_notice' );
@@ -2837,6 +2927,9 @@ function tryl_documentation_tab_content() {
         
         <div class="tryl-url-box">[tryl_prayer_wall]</div>
         <p class="description">Renders approved public prayer requests in a masonry grid.</p>
+        
+        <div class="tryl-url-box">[tryl_order_tracker]</div>
+        <p class="description">Renders the public Order Tracking form (Beta) so users can see their visual progress bar without logging in.</p>
     </div>
     
     <div class="tryl-guide-card">
@@ -3134,6 +3227,16 @@ function tryl_admin_page_html() {
                                 <input type="number" name="tryl_shop_grid_limit" value="<?php echo esc_attr(get_option('tryl_shop_grid_limit', 32)); ?>" />
                                 <p class="description">Maximum number of products to show in the 3D Shop Grid before pagination/cutoff.</p>
                             </div>
+                            <div class="tryl-admin-row">
+                                <label>Items Per Row (Desktop)</label>
+                                <select name="tryl_shop_grid_columns">
+                                    <option value="2" <?php selected(get_option('tryl_shop_grid_columns', '4'), '2'); ?>>2 Columns</option>
+                                    <option value="3" <?php selected(get_option('tryl_shop_grid_columns', '4'), '3'); ?>>3 Columns</option>
+                                    <option value="4" <?php selected(get_option('tryl_shop_grid_columns', '4'), '4'); ?>>4 Columns (Default)</option>
+                                    <option value="5" <?php selected(get_option('tryl_shop_grid_columns', '4'), '5'); ?>>5 Columns</option>
+                                </select>
+                                <p class="description">Controls the layout grid. Automatically scales down responsively on smaller screens.</p>
+                            </div>
                         </div>
                         <div class="tryl-admin-card">
                             <h2>Global Navigation & URLs</h2>
@@ -3264,40 +3367,6 @@ function tryl_admin_page_html() {
                                 <p class="description">Use <code>{product}</code> to dynamically insert the product name.</p>
                             </div>
                         </div>
-
-                        <div class="tryl-admin-card">
-                            <h2><span class="dashicons dashicons-grid-view"></span> Nike-Inspired Shop Grid & Size Interactions</h2>
-                            <p class="description" style="margin-top:-20px; margin-bottom: 24px;">Configure the visual behavior of the shop grid sizing selector and success notification modes.</p>
-                            
-                            <div class="tryl-admin-row">
-                                <label>Sizing Selector Action Mode</label>
-                                <select name="tryl_size_selector_style">
-                                    <option value="buttons" <?php selected(get_option('tryl_size_selector_style', 'buttons'), 'buttons'); ?>>Turn trigger into size buttons inline</option>
-                                    <option value="slideout" <?php selected(get_option('tryl_size_selector_style', 'buttons'), 'slideout'); ?>>Sleek slide-out size drawer</option>
-                                </select>
-                                <p class="description">How size variants are revealed when clicking a grid product trigger.</p>
-                            </div>
-
-                            <div class="tryl-admin-row">
-                                <label>Success Feedback Effect</label>
-                                <select name="tryl_size_btn_feedback">
-                                    <option value="glow" <?php selected(get_option('tryl_size_btn_feedback', 'glow'), 'glow'); ?>>Vibrant Green Glow Pulse</option>
-                                    <option value="scale" <?php selected(get_option('tryl_size_btn_feedback', 'glow'), 'scale'); ?>>Enlarge & Scale Up Success</option>
-                                    <option value="tick" <?php selected(get_option('tryl_size_btn_feedback', 'glow'), 'tick'); ?>>Dynamic Badge Number Tick-Up</option>
-                                </select>
-                                <p class="description">Visual confirmation feedback shown on the shop grid when an item is added.</p>
-                            </div>
-
-                            <div class="tryl-admin-row">
-                                <label>Cart Activation Mechanism</label>
-                                <select name="tryl_cart_activation_style">
-                                    <option value="drawer" <?php selected(get_option('tryl_cart_activation_style', 'drawer'), 'drawer'); ?>>Slide Mini-Cart drawer off the right</option>
-                                    <option value="code_only" <?php selected(get_option('tryl_cart_activation_style', 'drawer'), 'code_only'); ?>>Silent update (No drawer opens, fits minimalist checkout)</option>
-                                </select>
-                                <p class="description">Select if the right drawer should automatically slide open on click, or if background updates take care of it silently.</p>
-                            </div>
-                        </div>
-
                         <div class="tryl-admin-card">
                             <h2><span class="dashicons dashicons-controls-forward"></span> 1-Click Order Bump</h2>
                             <div class="tryl-toggle-wrap">
@@ -4104,7 +4173,7 @@ function tryl_printful_api_request( $endpoint, $method = 'GET', $data = null ) {
         $args['body'] = wp_json_encode( $data );
     }
     
-    $response = wp_remote_get( 'https://api.printful.com/' . $endpoint, $args );
+    $response = wp_remote_request( 'https://api.printful.com/' . $endpoint, $args );
     
     if ( is_wp_error( $response ) ) {
         return $response;
@@ -4734,7 +4803,7 @@ function tryl_extension_stats_endpoint() {
 function tryl_extension_font_receptor( WP_REST_Request $request ) {
     // The Chrome Extension posts { "font_family": "LokFont", "css": "@font-face{...}" }
     $font_family = sanitize_text_field( $request->get_param( 'font_family' ) );
-    $font_css    = sanitize_textarea_field( $request->get_param( 'css' ) ); // We sanitize but allow the raw CSS structure
+    $font_css    = wp_strip_all_tags( wp_unslash( $request->get_param( 'css' ) ) ); // Strip HTML but preserve CSS quotes
     
     if ( empty( $font_family ) || empty( $font_css ) ) {
         return new WP_Error( 'missing_data', 'Font Family and CSS payload required.', array( 'status' => 400 ) );

@@ -211,6 +211,7 @@ Implemented the **TRYL Mockup Generation Engine** with a "Smart Fallback Valve".
 - **Native Marketing Integrations:** Integrated Mailchimp and Klaviyo APIs directly into the core. Upgraded the Exit-Intent popup to subscribe users silently via AJAX and added a gorgeous newsletter opt-in toggle to the checkout sidebar.
 - **Gutenberg Dual-Engine (Phase 6):** Scaffolded the React/Webpack environment to port all legacy shortcodes (Hero, 3D Shop, Prayer Form, Prayer Wall) into Server-Side Rendered (SSR) Gutenberg Blocks, allowing live previews inside the WordPress visual editor without breaking backend Printful automated logic.
 - **Order Progress Visualizer:** Added an interactive, SVG-powered delivery timeline to the customer's "My Account" dashboard that visually syncs with Printful's routing status.
+- **Public Order Tracker (Beta):** Created a dual-engine component (Shortcode + Gutenberg Block) allowing customers to query their visual tracking timeline publicly using an Order ID and Email combination.
 
 ## Current Status
 
@@ -239,6 +240,7 @@ Implemented the **TRYL Mockup Generation Engine** with a "Smart Fallback Valve".
 ✅ Native Marketing APIs - Directly connected Mailchimp & Klaviyo to popups and checkout logic.
 ✅ Gutenberg Block Suite - Completed Phase 6, wrapping all visual shortcodes into live React-powered Gutenberg blocks.
 ✅ Customer Dashboard Tracking - Added the Order Progress Visualizer to the "My Account" view.
+✅ Public Order Tracker - Built the Beta tracking interface for non-logged-in customers.
 
 ### Files Currently Modified (Local)
 - `tryl-ecommerce-core/tryl-ecommerce-core.php` - Main plugin with all features
@@ -417,6 +419,14 @@ Future AI assistants (and human developers) interacting with this ecosystem must
 - **Skill:** Understanding Printful's external fulfillment API architecture.
 - **Protocol:** Printful API requests to `/orders` default to unpaid drafts. AI must append `?confirm=1` to the endpoint for live automated fulfillment.
 - **Protocol:** "Sandbox Mode" testing must intentionally drop the `confirm` flag and attach the `_tryl_is_test_order` meta tag to WP orders for safe data purging.
+
+#### 6. Asynchronous Offloading (Preventing Checkout Freezes)
+- **Skill:** Preserving WooCommerce checkout speeds when dealing with external Marketing or Fulfillment APIs.
+- **Protocol:** NEVER execute blocking, synchronous external API calls (e.g., Mailchimp, Klaviyo, Printful) within the `woocommerce_checkout_order_processed` hook. ALWAYS use `wp_schedule_single_event` to offload the API payload to the background cron, allowing the customer's transaction to finalize instantaneously.
+
+#### 7. Secure Media Handlers
+- **Skill:** Overriding WordPress MIME types safely for design assets (like `.woff2`).
+- **Protocol:** Always wrap `upload_mimes` and `wp_check_filetype_and_ext` filters in a `current_user_can('manage_options')` check to prevent non-admins from uploading arbitrary file types, and use `wp_kses(..., array())` for safe CSS output.
 
 ### Code Conventions
 - **Prefixing**: All custom functions use `tryl_` or `tryl_printful_` prefix

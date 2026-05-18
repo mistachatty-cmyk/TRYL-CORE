@@ -178,111 +178,46 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // ── 5. SHOP GRID ATC & SIZE SELECTOR LOGIC ──
     document.addEventListener('click', function(e) {
-        // Toggle Size Dropdown / Slide-out / Inline buttons
-        var toggleBtn = e.target.closest('.tryl-atc-inline-toggle');
+        // Overlay Button triggers Footer interaction
+        var quickAddBtn = e.target.closest('.tryl-quick-add-trigger');
+        if (quickAddBtn) {
+            e.preventDefault();
+            var card = quickAddBtn.closest('.tryl-card, .te-card');
+            if (card) {
+                var toggle = card.querySelector('.tryl-atc-inline-toggle');
+                if (toggle) toggle.click();
+            }
+            return;
+        }
+
+        // Toggle Size Inline Row
+        var toggleBtn = e.target.closest('.tryl-atc-inline-toggle:not(.tryl-go-checkout)');
         if (toggleBtn) {
             e.preventDefault();
             var wrapper = toggleBtn.closest('.tryl-inline-var-wrapper');
             var dropdown = wrapper.querySelector('.tryl-inline-var-dropdown');
-            var card = toggleBtn.closest('.tryl-card');
-            var isVisible = dropdown.style.display !== 'none';
-            var mode = (typeof trylCoreSettings !== 'undefined' && trylCoreSettings.sizeSelectorStyle) || 'buttons';
             
             // Close all other dropdowns first
             document.querySelectorAll('.tryl-inline-var-dropdown').forEach(function(el) {
                 if (el !== dropdown) {
+                    el.style.display = 'none';
                     var currentWrapper = el.closest('.tryl-inline-var-wrapper');
                     var currentToggle = currentWrapper ? currentWrapper.querySelector('.tryl-atc-inline-toggle') : null;
                     if (currentToggle) currentToggle.style.display = '';
-                    if (typeof gsap !== 'undefined') {
-                        gsap.to(el, { opacity: 0, scale: 0.95, y: 10, duration: 0.2, onComplete: () => {
-                            el.style.display = 'none';
-                            el.style.transform = '';
-                        }});
-                    } else {
-                        el.style.display = 'none';
-                    }
                 }
             });
 
-            if (!isVisible) {
-                if (mode === 'buttons') {
-                    // Turn "Select Size" button into the size choice buttons inline!
-                    if (typeof gsap !== 'undefined') {
-                        gsap.to(toggleBtn, { opacity: 0, scale: 0.8, duration: 0.2, onComplete: () => {
-                            toggleBtn.style.display = 'none';
-                            
-                            // Style dropdown to sit inline instead of floating absolute
-                            dropdown.style.position = 'static';
-                            dropdown.style.boxShadow = 'none';
-                            dropdown.style.padding = '4px 0 0 0';
-                            dropdown.style.border = 'none';
-                            dropdown.style.background = 'transparent';
-                            dropdown.style.display = 'block';
-                            dropdown.style.width = '100%';
-                            var header = dropdown.querySelector('div');
-                            if (header) header.style.display = 'none';
-                            
-                            gsap.fromTo(dropdown, { opacity: 0, scale: 0.9, y: 0 }, { opacity: 1, scale: 1, y: 0, duration: 0.35, ease: 'power2.out' });
-                        }});
-                    } else {
+            if (typeof gsap !== 'undefined') {
+                gsap.to(toggleBtn, {
+                    opacity: 0, scale: 0.8, duration: 0.2, onComplete: () => {
                         toggleBtn.style.display = 'none';
-                        dropdown.style.position = 'static';
-                        dropdown.style.boxShadow = 'none';
-                        dropdown.style.padding = '4px 0 0 0';
-                        dropdown.style.border = 'none';
-                        dropdown.style.background = 'transparent';
-                        dropdown.style.display = 'block';
-                        var header = dropdown.querySelector('div');
-                        if (header) header.style.display = 'none';
-                    }
-                } else {
-                    // Slide-out Tray overlay from bottom of the product card
-                    if (card) {
-                        card.style.position = 'relative';
-                        card.style.overflow = 'hidden';
-                    }
-                    
-                    dropdown.style.position = 'absolute';
-                    dropdown.style.bottom = '0';
-                    dropdown.style.left = '0';
-                    dropdown.style.right = '0';
-                    dropdown.style.width = '100%';
-                    dropdown.style.boxShadow = '0 -6px 24px rgba(0,0,0,0.12)';
-                    dropdown.style.padding = '14px 12px 12px 12px';
-                    dropdown.style.border = 'none';
-                    dropdown.style.borderTop = '1px solid var(--border)';
-                    dropdown.style.background = 'var(--card-bg)';
-                    dropdown.style.borderRadius = '0 0 12px 12px';
-                    dropdown.style.zIndex = '50';
                     dropdown.style.display = 'block';
-                    dropdown.style.transformOrigin = 'bottom center';
-                    
-                    var header = dropdown.querySelector('div');
-                    if (header) header.style.display = 'block';
-                    
-                    // Add modern close button if not present
-                    if (!dropdown.querySelector('.tryl-slideout-close')) {
-                        var closeBtn = document.createElement('button');
-                        closeBtn.className = 'tryl-slideout-close';
-                        closeBtn.innerHTML = '&times;';
-                        closeBtn.setAttribute('style', 'position:absolute; top:4px; right:8px; background:none; border:none; color:var(--muted); font-size:1.4rem; cursor:pointer; font-weight:bold; padding:4px; line-height:1;');
-                        closeBtn.onclick = function(ev) {
-                            ev.preventDefault();
-                            ev.stopPropagation();
-                            if (typeof gsap !== 'undefined') {
-                                gsap.to(dropdown, { y: '100%', opacity: 0, duration: 0.25, onComplete: () => { dropdown.style.display = 'none'; } });
-                            } else {
-                                dropdown.style.display = 'none';
-                            }
-                        };
-                        dropdown.appendChild(closeBtn);
-                    }
-                    
-                    if (typeof gsap !== 'undefined') {
-                        gsap.fromTo(dropdown, { y: '100%', opacity: 0 }, { y: '0%', opacity: 1, duration: 0.35, ease: 'power2.out' });
-                    }
+                    gsap.fromTo(dropdown, { opacity: 0, scale: 0.9, y: -10 }, { opacity: 1, scale: 1, y: 0, duration: 0.35, ease: 'power2.out' });
                 }
+                });
+            } else {
+                toggleBtn.style.display = 'none';
+                dropdown.style.display = 'block';
             }
             return;
         }
@@ -291,20 +226,12 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!e.target.closest('.tryl-inline-var-wrapper')) {
             document.querySelectorAll('.tryl-inline-var-dropdown').forEach(function(el) {
                 if (el.style.display !== 'none') {
+                    el.style.display = 'none';
                     var wrapper = el.closest('.tryl-inline-var-wrapper');
                     var toggleBtn = wrapper ? wrapper.querySelector('.tryl-atc-inline-toggle') : null;
-                    
-                    if (typeof gsap !== 'undefined') {
-                        gsap.to(el, { opacity: 0, scale: 0.95, duration: 0.2, onComplete: () => {
-                            el.style.display = 'none';
-                            if (toggleBtn) {
-                                toggleBtn.style.display = '';
-                                gsap.fromTo(toggleBtn, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.2 });
-                            }
-                        }});
-                    } else {
-                        el.style.display = 'none';
-                        if (toggleBtn) toggleBtn.style.display = '';
+                    if (toggleBtn) {
+                        toggleBtn.style.display = '';
+                        if (typeof gsap !== 'undefined') gsap.fromTo(toggleBtn, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.2 });
                     }
                 }
             });
@@ -328,16 +255,23 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 
     function handleAddToCart(btn, productId, variationId) {
-        var ogText = btn.innerHTML;
         var isVar = !!variationId;
         var card = btn.closest('.tryl-card');
+        var wrapper = btn.closest('.tryl-inline-var-wrapper');
+        var mainToggle = wrapper ? wrapper.querySelector('.tryl-atc-inline-toggle') : null;
+        var dropdown = wrapper ? wrapper.querySelector('.tryl-inline-var-dropdown') : null;
+
+        var targetBtn = btn;
         
-        btn.classList.add('loading');
-        btn.innerHTML = '<span style="display:flex;align-items:center;gap:6px;justify-content:center;"><svg style="animation: spin 1s linear infinite;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Adding...</span>';
-        if (isVar) {
-            btn.style.opacity = '0.5';
-            btn.style.pointerEvents = 'none';
+        if (isVar && mainToggle && dropdown) {
+            dropdown.style.display = 'none';
+            mainToggle.style.display = '';
+            targetBtn = mainToggle;
         }
+
+        var ogText = targetBtn.innerHTML;
+        targetBtn.classList.add('loading');
+        targetBtn.innerHTML = '<span style="display:flex;align-items:center;gap:6px;justify-content:center;"><svg style="animation: spin 1s linear infinite;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg> Adding...</span>';
 
         var fd = new FormData();
         fd.append('action', 'tryl_ajax_add_to_cart');
@@ -353,56 +287,32 @@ document.addEventListener("DOMContentLoaded", function() {
         .then(res => res.json())
         .then(res => {
             if (res.success) {
-                // Success Confirmation Feedback Options
-                var feedbackMode = (typeof trylCoreSettings !== 'undefined' && trylCoreSettings.sizeBtnFeedback) || 'glow';
+                targetBtn.classList.remove('loading');
+                targetBtn.classList.add('added');
+                targetBtn.innerHTML = '<span style="display:flex;align-items:center;gap:6px;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Added!</span>';
                 
-                btn.innerHTML = '<span style="display:flex;align-items:center;gap:6px;justify-content:center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Added</span>';
-                btn.classList.add('added');
-                btn.classList.remove('loading');
+                setTimeout(() => {
+                    targetBtn.classList.remove('added');
+                    targetBtn.innerHTML = '<span style="display:flex;align-items:center;gap:6px;justify-content:center;">Checkout <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>';
+                    targetBtn.style.backgroundColor = 'var(--dark, #0d1b0f)';
+                    targetBtn.style.color = '#fff';
+                    targetBtn.style.borderColor = 'var(--dark, #0d1b0f)';
+                    targetBtn.classList.remove('tryl-atc-inline-toggle');
+                    targetBtn.classList.add('tryl-go-checkout');
+                    targetBtn.onclick = function (e) { e.preventDefault(); window.location.href = trylMiniCart.checkoutUrl; };
+                }, 1500);
 
                 if (typeof gsap !== 'undefined') {
-                    if (feedbackMode === 'glow') {
-                        // Green Glow Pulse Effect on Card
-                        gsap.fromTo(btn, { scale: 0.9, backgroundColor: '#31d190', color: '#fff' }, { scale: 1, duration: 0.35, ease: 'back.out(2)' });
-                        if (card) {
-                            gsap.fromTo(card, 
-                                { boxShadow: '0 0 0px rgba(49, 209, 144, 0)', borderColor: 'var(--border)' }, 
-                                { boxShadow: '0 0 20px rgba(49, 209, 144, 0.65)', borderColor: '#31d190', duration: 0.3, repeat: 3, yoyo: true, ease: 'power1.inOut', onComplete: () => {
+                    gsap.fromTo(targetBtn, { scale: 0.9, backgroundColor: '#31d190', color: '#fff' }, { scale: 1, duration: 0.35, ease: 'back.out(2)' });
+                    if (card) {
+                        gsap.fromTo(card,
+                            { boxShadow: '0 0 0px rgba(49, 209, 144, 0)', borderColor: 'var(--border)' }, 
+                            {
+                                boxShadow: '0 0 20px rgba(49, 209, 144, 0.65)', borderColor: '#31d190', duration: 0.3, repeat: 1, yoyo: true, ease: 'power1.inOut', onComplete: () => {
                                     gsap.to(card, { boxShadow: '', borderColor: '', duration: 0.3 });
-                                }});
-                        }
-                    } else if (feedbackMode === 'scale') {
-                        // Enlarge & Scale Up Success Feedback
-                        gsap.timeline()
-                            .fromTo(btn, { scale: 0.9, backgroundColor: '#31d190', color: '#fff' }, { scale: 1.25, duration: 0.3, ease: 'back.out(3)' })
-                            .to(btn, { scale: 1, duration: 0.3, ease: 'power2.out', delay: 0.3 });
-                        if (card) {
-                            gsap.timeline()
-                                .to(card, { scale: 1.03, duration: 0.25, ease: 'power2.out' })
-                                .to(card, { scale: 1, duration: 0.3, ease: 'back.out(1.5)', delay: 0.15 });
-                        }
-                    } else if (feedbackMode === 'tick') {
-                        // Floating RPG-style +1 and Cart Badges scale up / count numerical tick animation
-                        gsap.fromTo(btn, { scale: 0.9, backgroundColor: '#31d190', color: '#fff' }, { scale: 1, duration: 0.35, ease: 'back.out(2)' });
-                        
-                        var rect = btn.getBoundingClientRect();
-                        var floating = document.createElement('div');
-                        floating.textContent = '+1';
-                        floating.setAttribute('style', 'position:fixed; left:' + (rect.left + rect.width/2 - 12) + 'px; top:' + (rect.top - 12) + 'px; color:#31d190; font-family:var(--tryl-body-font); font-size:1.25rem; font-weight:800; pointer-events:none; z-index:99999; text-shadow: 0 2px 8px rgba(0,0,0,0.15);');
-                        document.body.appendChild(floating);
-                        gsap.to(floating, { y: -50, opacity: 0, scale: 1.4, duration: 0.8, ease: 'power2.out', onComplete: () => floating.remove() });
-                        
-                        // Bounce the header navigation cart badges
-                        var cartBadges = document.querySelectorAll('.tryl-cart-count-badge, .tryl-cart-count');
-                        cartBadges.forEach(function(badge) {
-                            gsap.timeline()
-                                .to(badge, { scale: 1.4, duration: 0.2, ease: 'back.out(2)' })
-                                .to(badge, { scale: 1, duration: 0.3, ease: 'power2.out' });
-                        });
+                                }
+                            });
                     }
-                } else {
-                    btn.style.backgroundColor = '#31d190';
-                    btn.style.color = '#fff';
                 }
                 
                 // Refresh Mini Cart
@@ -420,74 +330,21 @@ document.addEventListener("DOMContentLoaded", function() {
                         document.querySelectorAll('.tryl-cart-count').forEach(el => el.textContent = res.data.count);
                         document.querySelectorAll('.tryl-cart-count-badge').forEach(el => el.style.display = res.data.count > 0 ? 'flex' : 'none');
                         
-                        // Handle Dropdown close restore
-                        if (isVar) {
-                            var dropdown = btn.closest('.tryl-inline-var-dropdown');
-                            if (dropdown) {
-                                var wrapper = btn.closest('.tryl-inline-var-wrapper');
-                                var toggleBtn = wrapper ? wrapper.querySelector('.tryl-atc-inline-toggle') : null;
-                                setTimeout(() => {
-                                    if (typeof gsap !== 'undefined') {
-                                        gsap.to(dropdown, { opacity: 0, scale: 0.95, duration: 0.2, onComplete: () => {
-                                            dropdown.style.display = 'none';
-                                            dropdown.style.transform = '';
-                                            if (toggleBtn) {
-                                                toggleBtn.style.display = '';
-                                                gsap.fromTo(toggleBtn, { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.25 });
-                                            }
-                                        }});
-                                    } else {
-                                        dropdown.style.display = 'none';
-                                        if (toggleBtn) toggleBtn.style.display = '';
-                                    }
-                                    btn.innerHTML = ogText;
-                                    btn.style.opacity = '1';
-                                    btn.style.pointerEvents = 'auto';
-                                    btn.classList.remove('added');
-                                    if (typeof gsap !== 'undefined') {
-                                        gsap.to(btn, { backgroundColor: '', color: '', duration: 0.3 });
-                                    }
-                                }, 1000);
-                            }
-                        } else {
-                            setTimeout(() => {
-                                btn.innerHTML = ogText;
-                                btn.classList.remove('added');
-                                if (typeof gsap !== 'undefined') {
-                                    gsap.to(btn, { backgroundColor: '', color: '', duration: 0.3 });
-                                }
-                            }, 1500);
-                        }
-                        
-                        // Cart Activation Style mechanism
-                        var actStyle = (typeof trylCoreSettings !== 'undefined' && trylCoreSettings.cartActivationStyle) || 'drawer';
-                        if (actStyle === 'drawer' && typeof window.trylOpenCart === 'function') {
+                        if (trylCoreSettings.autoOpen === '1' && typeof window.trylOpenCart === 'function') {
                             window.trylOpenCart();
                         }
                     }
                 });
             } else {
-                btn.innerHTML = 'Error';
-                btn.classList.remove('loading');
-                setTimeout(() => {
-                    btn.innerHTML = ogText;
-                    if (isVar) {
-                        btn.style.opacity = '1';
-                        btn.style.pointerEvents = 'auto';
-                    }
-                }, 2000);
+                targetBtn.innerHTML = 'Error';
+                targetBtn.classList.remove('loading');
+                setTimeout(() => { targetBtn.innerHTML = ogText; }, 2000);
             }
         })
         .catch(err => {
-            btn.innerHTML = 'Error';
-            btn.classList.remove('loading');
-            setTimeout(() => {
-                btn.innerHTML = ogText;
-                if (isVar) {
-                    btn.style.opacity = '1';
-                    btn.style.pointerEvents = 'auto';
-                }
-            }, 2000);
+            targetBtn.innerHTML = 'Error';
+            targetBtn.classList.remove('loading');
+            setTimeout(() => { targetBtn.innerHTML = ogText; }, 2000);
         });
     }
 });

@@ -85,3 +85,23 @@ registerBlockType('tryl/shop-grid-block', {
     },
     save: function () { return null; } // Must return null for PHP Server-Side blocks
 });
+
+// Register the TRYL Order Tracker Block
+registerBlockType('tryl/order-tracker-block', {
+    apiVersion: 2,
+    title: 'TRYL Order Tracker',
+    icon: 'location',
+    category: 'widgets',
+    description: 'Public order tracking form with visual progress bar.',
+
+    edit: function (props) {
+        const blockProps = useBlockProps();
+        return (
+            <div {...blockProps} style={{ border: '2px dashed #0d1b0f', padding: '10px' }}>
+                <div style={{ background: '#0d1b0f', color: '#fff', padding: '4px 8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'inline-block', marginBottom: '8px' }}>Live Preview: Order Tracker</div>
+                <ServerSideRender block="tryl/order-tracker-block" attributes={props.attributes} />
+            </div>
+        );
+    },
+    save: function () { return null; } // Must return null for PHP Server-Side blocks
+});
