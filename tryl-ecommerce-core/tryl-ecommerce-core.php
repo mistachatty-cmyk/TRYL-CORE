@@ -137,7 +137,6 @@ add_filter( 'wp_check_filetype_and_ext', 'tryl_correct_font_filetypes', 10, 4 );
  */
 add_filter( 'woocommerce_has_block_template', '__return_false', 99999 );
 add_filter( 'woocommerce_checkout_use_block', '__return_false', 99999 );
-add_filter( 'woocommerce_cart_use_block', '__return_false', 99999 );
 
 /**
  * Force our custom templates for single products and checkout form.
@@ -273,6 +272,10 @@ add_filter( 'template_include', 'tryl_universal_template_overrides', 999999 );
 
 // Kill SeedProd's own template filter on product pages
 add_filter( 'seedprod_template_include', function( $template ) {
+    // SAFETY: Do not fire the kill switch if we are actively building in SeedProd or Divi
+    if ( is_admin() || isset( $_GET['seedprod_id'] ) || isset( $_GET['et_fb'] ) ) {
+        return $template;
+    }
     if ( is_singular( 'product' ) || ( function_exists('is_product') && is_product() ) ) {
         $custom = plugin_dir_path( __FILE__ ) . 'templates/single-product.php';
         if ( file_exists( $custom ) ) return $custom;
@@ -286,10 +289,14 @@ add_filter( 'seedprod_template_include', function( $template ) {
 
 // Prevent SeedProd from doing a full page takeover on WooCommerce pages
 add_action( 'template_redirect', function() {
+    // SAFETY: Do not fire the kill switch if we are actively building in SeedProd or Divi
+    if ( is_admin() || isset( $_GET['seedprod_id'] ) || isset( $_GET['et_fb'] ) ) {
+        return;
+    }
+
     if ( is_singular( 'product' ) || ( function_exists('is_product') && is_product() ) ||
          ( function_exists('is_shop') && is_shop() ) ||
-         ( function_exists('is_checkout') && is_checkout() ) ||
-         ( function_exists('is_cart') && is_cart() ) ) {
+         ( function_exists('is_checkout') && is_checkout() ) ) {
         // Remove SeedProd's template hijack hooks if they exist
         if ( class_exists( 'SeedProd_Lite' ) || class_exists( 'SeedProd' ) ) {
             remove_all_filters( 'template_include', 99 );    // SeedProd typically hooks at 99
@@ -320,9 +327,6 @@ add_filter('body_class', function($classes) {
 add_filter( 'render_block', function( $block_content, $block ) {
     if ( $block['blockName'] === 'woocommerce/checkout' && get_option('tryl_nike_checkout_active', '1') === '1' ) {
         return do_shortcode( '[woocommerce_checkout]' );
-    }
-    if ( $block['blockName'] === 'woocommerce/cart' ) {
-        return do_shortcode( '[woocommerce_cart]' );
     }
     return $block_content;
 }, 10, 2 );
@@ -1930,6 +1934,7 @@ function tryl_mini_cart_html() {
         </div>
         <?php else:
           foreach ( $items as $key => $item ):
+            if ( empty( $item['data'] ) || ! is_object( $item['data'] ) ) continue;
             $prod = $item['data'];
             $img  = wp_get_attachment_image_url( $prod->get_image_id(), 'thumbnail' ) ?: wc_placeholder_img_src();
         ?>
@@ -2058,6 +2063,7 @@ function tryl_refresh_minicart_handler() {
     </div>
     <?php else:
       foreach ( $items as $key => $item ):
+        if ( empty( $item['data'] ) || ! is_object( $item['data'] ) ) continue;
         $prod = $item['data'];
         $img  = wp_get_attachment_image_url( $prod->get_image_id(), 'thumbnail' ) ?: wc_placeholder_img_src();
     ?>
