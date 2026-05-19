@@ -73,7 +73,11 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 
     // ── 3. EXIT INTENT POPUP ──
-    if (!localStorage.getItem('tryl_popup_closed')) {
+    var popupClosedTime = localStorage.getItem('tryl_popup_closed_time');
+    var now = new Date().getTime();
+    var shouldShowPopup = !popupClosedTime || (now - parseInt(popupClosedTime)) > (7 * 24 * 60 * 60 * 1000); // 7 day expiry
+
+    if (shouldShowPopup) {
         var popupTriggered = false;
         var popupOverlay = document.getElementById('trylExitPopup');
         var popupCloseBtn = document.getElementById('trylPopupClose');
@@ -89,10 +93,10 @@ document.addEventListener("DOMContentLoaded", function() {
                 if (window.gsap) {
                     gsap.to(".tryl-popup-content", {
                         scale: 0.95, opacity: 0, y: 10, duration: 0.4, ease: "power2.in",
-                        onComplete: function() { popupOverlay.classList.remove('show'); localStorage.setItem('tryl_popup_closed', 'true'); }
+                        onComplete: function() { popupOverlay.classList.remove('show'); localStorage.setItem('tryl_popup_closed_time', new Date().getTime().toString()); }
                     });
                 } else {
-                    popupOverlay.classList.remove('show'); localStorage.setItem('tryl_popup_closed', 'true');
+                    popupOverlay.classList.remove('show'); localStorage.setItem('tryl_popup_closed_time', new Date().getTime().toString());
                 }
             }
             document.addEventListener('mouseout', function(e) { if (e.clientY < 10 && e.clientY > -200) { showPopup(); } });
@@ -149,11 +153,11 @@ document.addEventListener("DOMContentLoaded", function() {
             var itemsEl = document.getElementById('trylMcItems');
             var footerEl = document.getElementById('trylMcFooter');
             var subtotalEl = document.getElementById('trylMcSubtotal');
-            var freeShip = document.getElementById('trylMcFreeShip');
+              var freeShipWrap = document.getElementById('trylMcFreeShipWrap');
             if (itemsEl) itemsEl.innerHTML = res.data.html;
             if (subtotalEl) subtotalEl.innerHTML = res.data.subtotal;
             if (footerEl) footerEl.style.display = res.data.count > 0 ? '' : 'none';
-            if (freeShip) freeShip.textContent = res.data.free_ship || '';
+              if (freeShipWrap && res.data.free_ship_html) freeShipWrap.innerHTML = res.data.free_ship_html;
             updateCounts(res.data.count);
             bindQtyButtons();
             if (typeof callback === 'function') callback(res);
@@ -178,13 +182,50 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         
          function updateQty(key, qty) {
+            window.trylUpdatingKeys = window.trylUpdatingKeys || {};
+            if (window.trylUpdatingKeys[key]) return;
+            window.trylUpdatingKeys[key] = true;
+
            var fd = new FormData();
            fd.append('action', 'tryl_update_cart'); fd.append('cart_key', key); fd.append('quantity', qty);
            fetch(trylCoreSettings.ajaxurl, { method: 'POST', credentials: 'same-origin', body: fd })
-           .then(function(r){ return r.json(); }).then(function(res){ if (res.success) refreshCart(); });
+            .then(function(r){ return r.json(); }).then(function(res){ if (res.success) refreshCart(); })
+            .finally(function() { delete window.trylUpdatingKeys[key]; });
          }
         bindQtyButtons();
+
+        // Auto-open drawer on page load if a WooCommerce message indicates an added product
+        var wooMsg = document.querySelector('.woocommerce-message');
+        if (wooMsg && (wooMsg.textContent.indexOf('added') !== -1 || wooMsg.textContent.indexOf('Added') !== -1)) {
+            setTimeout(function () {
+                if (typeof window.trylOpenCart === 'function' && window.trylMiniCart && window.trylMiniCart.autoOpen === '1') window.trylOpenCart();
+            }, 400);
+        }
     })();
+
+    // ── SETUP MOBILE OVERLAY FOR SIZE SELECTOR ──
+    if (!document.getElementById('trylMobileOverlay')) {
+        var over = document.createElement('div');
+        over.id = 'trylMobileOverlay';
+        over.className = 'tryl-mobile-overlay';
+        document.body.appendChild(over);
+
+        over.addEventListener('click', function () {
+            document.querySelectorAll('.tryl-inline-var-dropdown').forEach(d => {
+                if (d.style.display !== 'none') {
+                    var isMobile = window.innerWidth <= 768;
+                    if (isMobile) {
+                        if (typeof gsap !== 'undefined') gsap.to(d, { y: '100%', duration: 0.25, ease: 'power2.in', onComplete: () => d.style.display = 'none' });
+                        else d.style.display = 'none';
+                    } else {
+                        if (typeof gsap !== 'undefined') gsap.to(d, { opacity: 0, y: -10, duration: 0.2, onComplete: () => d.style.display = 'none' });
+                        else d.style.display = 'none';
+                    }
+                }
+            });
+            over.classList.remove('open');
+        });
+    }
 
     // ── 5. SHOP GRID ATC & SIZE SELECTOR LOGIC ──
     document.addEventListener('click', function(e) {
@@ -266,7 +307,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function handleAddToCart(btn, productId, variationId) {
         var isVar = !!variationId;
-        var card = btn.closest('.tryl-card');
+        var card = btn.closest('.tryl-card, .te-card');
         var wrapper = btn.closest('.tryl-inline-var-wrapper');
         var mainToggle = wrapper ? wrapper.querySelector('.tryl-atc-inline-toggle') : null;
         var dropdown = wrapper ? wrapper.querySelector('.tryl-inline-var-dropdown') : null;

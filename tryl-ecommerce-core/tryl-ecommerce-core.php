@@ -150,6 +150,7 @@ function tryl_custom_woocommerce_templates( $template, $template_name, $template
     $single_product_path = $plugin_path . 'templates/single-product.php';
     $checkout_form_path = $plugin_path . 'templates/checkout/form-checkout.php';
     $thankyou_path = $plugin_path . 'templates/checkout/thankyou.php';
+    $shop_path = $plugin_path . 'templates/page-righteous-shop.php';
 
     // Single Product Override
     if ( $template_name === 'single-product.php' ) {
@@ -172,6 +173,13 @@ function tryl_custom_woocommerce_templates( $template, $template_name, $template
         }
     }
 
+    // Shop Archive Override
+    if ( $template_name === 'archive-product.php' ) {
+        if ( file_exists( $shop_path ) ) {
+            return $shop_path;
+        }
+    }
+
     return $template;
 }
 add_filter( 'woocommerce_locate_template', 'tryl_custom_woocommerce_templates', 999, 3 );
@@ -188,6 +196,9 @@ function tryl_force_wc_templates( $located, $template_name, $args, $template_pat
     }
     if ( $template_name === 'single-product.php' && get_option('tryl_premium_products_active', '1') === '1' ) {
         return $plugin_path . 'templates/single-product.php';
+    }
+    if ( $template_name === 'archive-product.php' ) {
+        return $plugin_path . 'templates/page-righteous-shop.php';
     }
     return $located;
 }
@@ -221,8 +232,8 @@ function tryl_universal_template_overrides( $template ) {
     $is_product_func = function_exists('is_product') && is_product();
     $is_shop_func = function_exists('is_shop');
     $is_shop = $is_shop_func && is_shop();
-    $is_product_category = is_product_category();
-    $is_product_tag = is_product_tag();
+        $is_product_category = function_exists('is_product_category') && is_product_category();
+        $is_product_tag = function_exists('is_product_tag') && is_product_tag();
     $is_404 = is_404();
     $premium_active = get_option('tryl_premium_products_active', '1');
     $custom_404_active = get_option('tryl_custom_404_active', '1');
@@ -236,14 +247,14 @@ function tryl_universal_template_overrides( $template ) {
         }
     }
     
-    // 1. Single Product Override
-    if ( $is_singular_product || $is_product_func ) {
-        if ( $premium_active === '1' && file_exists( $plugin_path . 'templates/single-product.php' ) ) {
-            return $plugin_path . 'templates/single-product.php';
+    // 2. Automatic WooCommerce Shop / Category Override
+    if ( $is_shop || $is_product_category || $is_product_tag ) {
+        $file = $plugin_path . 'templates/page-righteous-shop.php';
+        if ( file_exists( $file ) ) {
+            return $file;
         }
     }
-    
-    
+
     // 3. 404 Error Page Override
     if ( $is_404 && $custom_404_active === '1' ) {
         $t = $plugin_path . 'templates/404.php';
@@ -315,6 +326,27 @@ add_filter( 'render_block', function( $block_content, $block ) {
     }
     return $block_content;
 }, 10, 2 );
+
+// ─── SMART SHORTCODE ASSET TELEPORTER ──────────────────────────────────────
+// Bypasses aggressive page builders (SeedProd, Divi) that strip <script> and <style> tags
+global $tryl_shortcode_assets;
+$tryl_shortcode_assets = [];
+
+function tryl_add_shortcode_asset( $html ) {
+    global $tryl_shortcode_assets;
+    if ( ! is_array( $tryl_shortcode_assets ) ) {
+        $tryl_shortcode_assets = [];
+    }
+    if ( ! in_array( $html, $tryl_shortcode_assets ) ) {
+        $tryl_shortcode_assets[] = $html;
+    }
+}
+add_action( 'wp_footer', function() {
+    global $tryl_shortcode_assets;
+    if ( ! empty( $tryl_shortcode_assets ) && is_array( $tryl_shortcode_assets ) ) {
+        echo "\n<!-- TRYL Shortcode Assets (Teleported) -->\n" . implode( "\n", $tryl_shortcode_assets ) . "\n";
+    }
+}, 9999 );
 
 // ─── 2. SHOP GRID SHORTCODE ───────────────────────────────────────────────────
 if ( ! function_exists( 'tryl_get_core_product_card_html' ) ) {
@@ -448,6 +480,7 @@ function tryl_core_3d_shop_shortcode() {
     $all_cats = [];
     $terms = get_terms( [ 'taxonomy' => 'product_cat', 'hide_empty' => true ] );
     if ( ! is_wp_error( $terms ) ) foreach ( $terms as $t ) $all_cats[ $t->slug ] = $t->name;
+    $layout_style = get_option('tryl_shop_layout_style', 'standard');
     ?>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
@@ -488,6 +521,17 @@ function tryl_core_3d_shop_shortcode() {
         --btn-txt: #0d1b0f;
         --card-bg: #132615;
     }
+        <?php if ( $layout_style === 'nike' ) : ?>
+        :root, [data-theme="bright"], [data-theme="mild"], [data-theme="dark"] {
+            --sage: #f7f7f7 !important; --green: #0e8b70 !important; --dark: #111111 !important; --off: #ffffff !important;
+            --accent: #004db4 !important; --txt: #111111 !important; --muted: #888888 !important; --border: #eeeeee !important;
+            --btn-txt: #ffffff !important; --card-bg: #ffffff !important; --tryl-header-font: 'Helvetica Neue', Helvetica, sans-serif !important;
+        }
+        .tryl-card-img { padding: 0 !important; }
+        .tryl-card-img img { object-fit: cover !important; }
+        .tryl-shop-title { letter-spacing: -0.02em; }
+        .tryl-card { border: none !important; border-bottom: 1px solid var(--border) !important; }
+        <?php endif; ?>
     .tryl-shop{background:var(--off);font-family:var(--tryl-body-font);padding:48px 0 80px;}
     .tryl-shop-inner{max-width:1280px;margin:0 auto;padding:0 32px;}
     .tryl-shop-header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px;padding-bottom:28px;border-bottom:2px solid var(--dark);margin-bottom:40px;}
@@ -557,6 +601,11 @@ function tryl_core_3d_shop_shortcode() {
     }
     .tryl-mobile-overlay.open { opacity: 1; visibility: visible; }
     </style>
+    <?php
+    tryl_add_shortcode_asset( ob_get_clean() );
+    
+    ob_start();
+    ?>
     <div class="tryl-shop">
       <div class="tryl-shop-inner">
         <div class="tryl-shop-header">
@@ -588,9 +637,14 @@ function tryl_core_3d_shop_shortcode() {
         <div class="tryl-powered"><?php echo wp_kses_post($signature); ?></div>
       </div>
     </div>
+    <?php
+    $html = ob_get_clean();
+
+    ob_start();
+    ?>
     <script>
     document.addEventListener('DOMContentLoaded',function(){
-      if(typeof VanillaTilt!=='undefined') VanillaTilt.init(document.querySelectorAll('[data-tilt]'));
+      if(typeof VanillaTilt!=='undefined' && '<?php echo esc_js($layout_style); ?>' !== 'nike') VanillaTilt.init(document.querySelectorAll('[data-tilt]'));
           
           window.trylApplyGridFilter = function() {
               const activeBtn = document.querySelector('.tryl-filter.active');
@@ -632,7 +686,7 @@ function tryl_core_3d_shop_shortcode() {
                           var grid = document.getElementById('trylGrid');
                           grid.insertAdjacentHTML('beforeend', res.data.html);
                           
-                          if(typeof VanillaTilt!=='undefined') {
+                          if(typeof VanillaTilt!=='undefined' && '<?php echo esc_js($layout_style); ?>' !== 'nike') {
                               VanillaTilt.init(grid.querySelectorAll('[data-tilt]'));
                           }
                           window.trylApplyGridFilter();
@@ -654,206 +708,12 @@ function tryl_core_3d_shop_shortcode() {
                   });
               });
           }
-
-          // ── FEEDBACK ANIMATION SYSTEM ──
-          function trylPlayFeedbackAnim(btn) {
-              var effect = window.trylMiniCart ? window.trylMiniCart.animEffect : 'scale';
-              if (effect === 'none' || typeof gsap === 'undefined') return;
-
-              if (effect === 'glow') {
-                  var card = btn.closest('.tryl-card');
-                  if (card) {
-                      var ogShadow = card.style.boxShadow;
-                      var ogTransform = card.style.transform;
-                      gsap.to(card, {
-                          boxShadow: '0 0 0 4px var(--accent)', scale: 1.02, duration: 0.3, repeat: 1, yoyo: true, ease: 'power2.out',
-                          onComplete: () => { card.style.boxShadow = ogShadow; card.style.transform = ogTransform; }
-                      });
-                  }
-              } else if (effect === 'scale') {
-                  var cartIcon = document.querySelector('.tryl-cart-count-badge');
-                  if (cartIcon) {
-                      gsap.fromTo(cartIcon, { scale: 1 }, { scale: 1.4, duration: 0.3, ease: 'back.out(1.7)', onComplete: () => gsap.to(cartIcon, { scale: 1, duration: 0.2, ease: 'power2.in' }) });
-                  }
-              } else if (effect === 'bounce') {
-                  gsap.fromTo(btn, { scale: 1 }, { scale: 1.08, duration: 0.15, ease: 'power2.out', yoyo: true, repeat: 1 });
-              }
-          }
-
-          // ── SETUP MOBILE OVERLAY ──
-          if (!document.getElementById('trylMobileOverlay')) {
-              var over = document.createElement('div');
-              over.id = 'trylMobileOverlay';
-              over.className = 'tryl-mobile-overlay';
-              document.body.appendChild(over);
-              
-              over.addEventListener('click', function() {
-                  document.querySelectorAll('.tryl-inline-var-dropdown').forEach(d => {
-                      if (d.style.display !== 'none') {
-                          var isMobile = window.innerWidth <= 768;
-                          if (isMobile) {
-                              gsap.to(d, { y: '100%', duration: 0.25, ease: 'power2.in', onComplete: () => d.style.display = 'none' });
-                          } else {
-                              gsap.to(d, { opacity: 0, y: -10, duration: 0.2, onComplete: () => d.style.display = 'none' });
-                          }
-                      }
-                  });
-                  over.classList.remove('open');
-              });
-          }
-
-          // ── EVENT DELEGATION FOR SIZE SELECTION & ATC ──
-          document.body.addEventListener('click', function(e) {
-              var inlineToggle = e.target.closest('.tryl-atc-inline-toggle');
-              if (inlineToggle) {
-                  e.preventDefault();
-                  var wrapper = inlineToggle.closest('.tryl-inline-var-wrapper');
-                  var dropdown = wrapper.querySelector('.tryl-inline-var-dropdown');
-                  var isMobile = window.innerWidth <= 768;
-                  var over = document.getElementById('trylMobileOverlay');
-                  
-                  document.querySelectorAll('.tryl-inline-var-dropdown').forEach(d => {
-                      if (d !== dropdown && d.style.display !== 'none') {
-                          if (isMobile) {
-                              gsap.to(d, { y: '100%', duration: 0.2, onComplete: () => d.style.display = 'none' });
-                          } else {
-                              gsap.to(d, { opacity: 0, y: -10, duration: 0.2, onComplete: () => d.style.display = 'none' });
-                          }
-                      }
-                  });
-
-                  if (dropdown.style.display === 'none') {
-                      dropdown.style.display = 'block';
-                      if (isMobile) {
-                          if (over) over.classList.add('open');
-                          gsap.fromTo(dropdown, { y: '100%', opacity: 1 }, { y: '0%', duration: 0.35, ease: 'power3.out' });
-                      } else {
-                          gsap.fromTo(dropdown, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.3, ease: 'power2.out' });
-                      }
-                  } else {
-                      if (isMobile) {
-                          if (over) over.classList.remove('open');
-                          gsap.to(dropdown, { y: '100%', duration: 0.25, ease: 'power2.in', onComplete: () => dropdown.style.display = 'none' });
-                      } else {
-                          gsap.to(dropdown, { opacity: 0, y: -10, duration: 0.2, onComplete: () => dropdown.style.display = 'none' });
-                      }
-                  }
-                  return;
-              }
-
-              var varBtn = e.target.closest('.tryl-atc-variation');
-              if (varBtn) {
-                  e.preventDefault();
-                  if (varBtn.classList.contains('loading')) return;
-                  
-                  var pid = varBtn.dataset.pid;
-                  var vid = varBtn.dataset.vid;
-                  var originalText = varBtn.innerHTML;
-                  
-                  varBtn.classList.add('loading');
-                  varBtn.innerHTML = 'Adding...';
-                  
-                  var fd = new FormData();
-                  fd.append('action', 'tryl_ajax_add_to_cart');
-                  fd.append('product_id', pid);
-                  fd.append('variation_id', vid);
-                  fd.append('quantity', 1);
-                  
-                  var ajaxUrl = (window.trylMiniCart && window.trylMiniCart.ajaxurl) ? window.trylMiniCart.ajaxurl : '<?php echo admin_url('admin-ajax.php'); ?>';
-                  
-                  fetch(ajaxUrl, { method: 'POST', body: fd })
-                  .then(res => res.json())
-                  .then(res => {
-                      varBtn.classList.remove('loading');
-                      if (res.success) {
-                          varBtn.innerHTML = window.trylMiniCart ? window.trylMiniCart.btnText : 'Added!';
-                          varBtn.classList.add('added');
-                          trylPlayFeedbackAnim(varBtn);
-                          
-                          if (window.trylOpenCart && (window.trylMiniCart && window.trylMiniCart.autoOpen === '1')) window.trylOpenCart();
-                          
-                          setTimeout(() => {
-                              varBtn.innerHTML = originalText;
-                              varBtn.classList.remove('added');
-                              var dropdown = varBtn.closest('.tryl-inline-var-dropdown');
-                              if(dropdown) {
-                                  var isMobile = window.innerWidth <= 768;
-                                  if (isMobile) {
-                                      var over = document.getElementById('trylMobileOverlay');
-                                      if (over) over.classList.remove('open');
-                                      gsap.to(dropdown, { y: '100%', duration: 0.25, ease: 'power2.in', onComplete: () => dropdown.style.display = 'none' });
-                                  } else {
-                                      gsap.to(dropdown, { opacity: 0, y: -10, duration: 0.2, onComplete: () => dropdown.style.display = 'none' });
-                                  }
-                              }
-                          }, 1500);
-                      } else {
-                          varBtn.innerHTML = 'Error';
-                          setTimeout(() => { varBtn.innerHTML = originalText; }, 2000);
-                      }
-                  })
-                  .catch(err => {
-                      varBtn.classList.remove('loading');
-                      varBtn.innerHTML = 'Error';
-                      setTimeout(() => { varBtn.innerHTML = originalText; }, 2000);
-                  });
-                  return;
-              }
-
-              var simpleAtc = e.target.closest('.tryl-atc:not(.tryl-atc-choose)');
-              if (simpleAtc) {
-                  if (simpleAtc.hasAttribute('disabled') || simpleAtc.id === 'trylLoadMoreBtn') return;
-                  e.preventDefault();
-                  if (simpleAtc.classList.contains('loading')) return;
-                  
-                  var pid = simpleAtc.dataset.pid;
-                  if (!pid) return;
-                  
-                  var span = simpleAtc.querySelector('span');
-                  var originalHTML = simpleAtc.innerHTML;
-                  
-                  simpleAtc.classList.add('loading');
-                  if (span) span.innerText = 'Adding...'; else simpleAtc.innerText = 'Adding...';
-                  
-                  var fd = new FormData();
-                  fd.append('action', 'tryl_ajax_add_to_cart');
-                  fd.append('product_id', pid);
-                  fd.append('quantity', 1);
-                  
-                  var ajaxUrl = (window.trylMiniCart && window.trylMiniCart.ajaxurl) ? window.trylMiniCart.ajaxurl : '<?php echo admin_url('admin-ajax.php'); ?>';
-                  
-                  fetch(ajaxUrl, { method: 'POST', body: fd })
-                  .then(res => res.json())
-                  .then(res => {
-                      simpleAtc.classList.remove('loading');
-                      if (res.success) {
-                          var addedText = window.trylMiniCart ? window.trylMiniCart.btnText : 'Added!';
-                          if (span) span.innerText = addedText; else simpleAtc.innerText = addedText;
-                          simpleAtc.classList.add('added');
-                          trylPlayFeedbackAnim(simpleAtc);
-                          
-                          if (window.trylOpenCart && (window.trylMiniCart && window.trylMiniCart.autoOpen === '1')) window.trylOpenCart();
-                          
-                          setTimeout(() => {
-                              simpleAtc.innerHTML = originalHTML;
-                              simpleAtc.classList.remove('added');
-                          }, 1500);
-                      } else {
-                          if (span) span.innerText = 'Error'; else simpleAtc.innerText = 'Error';
-                          setTimeout(() => { simpleAtc.innerHTML = originalHTML; }, 2000);
-                      }
-                  })
-                  .catch(err => {
-                      simpleAtc.classList.remove('loading');
-                      if (span) span.innerText = 'Error'; else simpleAtc.innerText = 'Error';
-                      setTimeout(() => { simpleAtc.innerHTML = originalHTML; }, 2000);
-                  });
-              }
-          });
     });
     </script>
     <?php
-    return ob_get_clean();
+    tryl_add_shortcode_asset( ob_get_clean() );
+
+    return $html;
 }
 } // endif function_exists( 'tryl_core_3d_shop_shortcode' )
 
@@ -1290,6 +1150,27 @@ function tryl_premium_cart_checkout_css() {
     .nike-switch.disabled { opacity: 0.5; cursor: not-allowed; }
     .nike-switch.disabled .nike-switch-inner { background-color: var(--border); cursor: not-allowed; }
     .badge-soon { background: var(--dark); color: var(--btn-txt); font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 4px; text-transform: uppercase; margin-left: 12px; letter-spacing: 0.05em; line-height: 1; display: inline-block; }
+    <?php if ( get_option('tryl_shop_layout_style', 'standard') === 'nike' ) : ?>
+    /* Nike Minimalist Checkout Overrides */
+    :root, [data-theme="bright"], [data-theme="mild"], [data-theme="dark"] {
+        --sage: #f7f7f7 !important; --green: #0e8b70 !important; --dark: #111111 !important; --off: #ffffff !important;
+        --accent: #004db4 !important; --txt: #111111 !important; --muted: #888888 !important; --border: #eeeeee !important;
+        --btn-txt: #ffffff !important; --input-bg: transparent !important; --card-bg: #ffffff !important;
+        --tryl-header-font: 'Helvetica Neue', Helvetica, sans-serif !important;
+    }
+    .woocommerce form .form-row input.input-text, .woocommerce form .form-row select, .woocommerce form .form-row textarea {
+        border: none !important; border-bottom: 2px solid var(--border) !important; padding: 16px 0 !important; font-size: 1.05rem !important;
+    }
+    <?php endif; ?>
+
+    /* ── Express Checkout ── */
+    .tryl-express-wrapper { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 32px; text-align: center; }
+    .tryl-express-title { font-family: var(--tryl-header-font); font-size: 1.1rem; text-transform: uppercase; color: var(--dark); margin-top: 0; margin-bottom: 16px; letter-spacing: 0.05em; }
+    .tryl-express-divider { display: flex; align-items: center; text-align: center; margin: 24px 0 0; color: var(--muted); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; }
+    .tryl-express-divider::before, .tryl-express-divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--border); }
+    .tryl-express-divider:not(:empty)::before { margin-right: .5em; }
+    .tryl-express-divider:not(:empty)::after { margin-left: .5em; }
+    #wc-stripe-payment-request-wrapper, #wc-stripe-payment-request-button { max-width: 400px; margin: 0 auto; padding-bottom: 0 !important; }
     </style>
     <?php
 }
@@ -1407,8 +1288,26 @@ function tryl_global_nav_css() {
         --ry-hamburger: #f5f8f5;
     }
     /* ── Site Nav (Global) ── */
+    
+    <?php if ( get_option('tryl_hide_theme_header', '1') === '1' ) : ?>
+    /* Hide default headers from Divi/SeedProd to prevent duplicates */
+    #main-header, #top-header, header.site-header, .site-header, header#masthead, #seedprod-header, #sp-header, .seedprod-header { display: none !important; }
+    /* Prevent Divi from adding empty space where the old header used to be */
+    body.et_fixed_nav #page-container, body.et_non_fixed_nav.et_transparent_nav #page-container { padding-top: 0 !important; }
+    <?php endif; ?>
+    
     body::before{content:'';display:block;height:64px;}
-    .tryl-injected-nav{position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--ry-nav-bg);backdrop-filter:blur(18px);border-bottom:1px solid var(--ry-border);display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:64px;transition:background .3s, border-color .3s;}
+    <?php if ( get_option('tryl_shop_layout_style', 'standard') === 'nike' ) : ?>
+    :root, [data-theme="bright"], [data-theme="mild"], [data-theme="dark"] {
+        --ry-bg: #ffffff !important; --ry-nav-bg: rgba(255,255,255,0.98) !important; --ry-text: #111111 !important;
+        --ry-accent: #004db4 !important; --ry-border: #eeeeee !important; --ry-footer-bg: #111111 !important;
+        --ry-footer-text: #ffffff !important; --ry-footer-muted: #888888 !important; --ry-footer-accent: #d62f31 !important;
+        --tryl-header-font: 'Helvetica Neue', Helvetica, sans-serif !important;
+    }
+    .tryl-nav-brand-bar { color: #111 !important; font-weight: 900 !important; letter-spacing: 0.1em !important; }
+    <?php endif; ?>
+    .tryl-injected-nav{position:fixed;top:0;left:0;right:0;z-index:999999 !important;background:var(--ry-nav-bg);backdrop-filter:blur(18px);border-bottom:1px solid var(--ry-border);display:flex !important;align-items:center;justify-content:space-between;padding:0 40px;height:64px;transition:background .3s, border-color .3s;}
+    
     @media(max-width:700px){.tryl-injected-nav{padding:0 20px;}}
     
     /* WordPress Admin Bar Layout Offsets */
@@ -1435,7 +1334,7 @@ function tryl_global_nav_css() {
     .tryl-hamburger.open span:nth-child(2){opacity:0;}
     .tryl-hamburger.open span:nth-child(3){transform:translateY(-8px) rotate(-45deg);}
     @media(max-width:700px){.tryl-hamburger{display:flex;}}
-    .tryl-mobile-nav{position:fixed;top:64px;left:0;right:0;bottom:0;overflow-y:auto;background:var(--ry-nav-bg);backdrop-filter:blur(18px);border-bottom:1px solid var(--ry-border);padding:24px 20px;display:flex;flex-direction:column;gap:16px;z-index:9998;transform:translateY(-100%);opacity:0;visibility:hidden;transition:all .4s cubic-bezier(0.25, 0.46, 0.45, 0.94);}
+    .tryl-mobile-nav{position:fixed;top:64px;left:0;right:0;bottom:0;overflow-y:auto;background:var(--ry-nav-bg);backdrop-filter:blur(18px);border-bottom:1px solid var(--ry-border);padding:24px 20px;display:flex;flex-direction:column;gap:16px;z-index:999998 !important;transform:translateY(-100%);opacity:0;visibility:hidden;transition:all .4s cubic-bezier(0.25, 0.46, 0.45, 0.94);}
     .tryl-mobile-nav.open{transform:translateY(0);opacity:1;visibility:visible;box-shadow:0 10px 30px rgba(0,0,0,0.05);}
     .tryl-mobile-nav a{font-family:var(--tryl-nav-font, var(--tryl-body-font));font-size:1.1rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ry-text);text-decoration:none;border-bottom:1px solid var(--ry-border);padding-bottom:12px; text-align: <?php echo esc_attr($mobile_align); ?>;}
     .tryl-mobile-nav a:last-child{border-bottom:none;padding-bottom:0;}
@@ -1451,20 +1350,6 @@ function tryl_global_nav_css() {
     .tryl-ts-bright { background: #f5f8f5; border-color: #d4e0d4; }
     .tryl-ts-mild { background: #e6e4df; border-color: #c4c0b5; }
     .tryl-ts-dark { background: #0d1b0f; border-color: #2d6a4f; }
-    
-    /* ── Search Bar ── */
-    .tryl-nav-search { display: flex; align-items: center; background: var(--ry-bg); border: 1px solid var(--ry-border); border-radius: 40px; padding: 6px 14px; transition: border-color 0.2s; margin-left: 16px; }
-    .tryl-nav-search:focus-within { border-color: var(--ry-accent); }
-    .tryl-search-field { background: transparent; border: none; outline: none; font-family: var(--tryl-body-font); font-size: 0.75rem; color: var(--ry-text); width: 120px; transition: width 0.3s; }
-    .tryl-search-field::placeholder { color: var(--ry-text); opacity: 0.5; }
-    .tryl-search-field:focus { width: 180px; }
-    .tryl-search-btn { background: transparent; border: none; cursor: pointer; color: var(--ry-text); opacity: 0.6; display: flex; align-items: center; justify-content: center; padding: 0; transition: opacity 0.2s; }
-    .tryl-search-btn:hover { opacity: 1; color: var(--ry-accent); }
-    @media(max-width: 900px) { .desktop-search { display: none !important; } }
-    
-    .tryl-mobile-search { margin-bottom: 12px; width: 100%; }
-    .tryl-mobile-search .tryl-nav-search { margin-left: 0; width: 100%; border-radius: 8px; padding: 10px 16px; }
-    .tryl-mobile-search .tryl-search-field { width: 100%; font-size: 0.9rem; }
     
     /* ── Mobile Socials ── */
     .tryl-mobile-socials { display: flex; gap: 20px; margin-top: auto; padding-top: 24px; padding-bottom: 12px; align-items: center; border-top: 1px solid var(--ry-border); }
@@ -1508,15 +1393,14 @@ function tryl_inject_nav_bar() {
     $social_tw = get_option('tryl_social_twitter');
     $social_yt = get_option('tryl_social_youtube');
     $social_fb = get_option('tryl_social_facebook');
+    
     $nav_items = [
         'Shop'           => $shop_url,
+        'About'          => get_option('tryl_nav_about', home_url('/about/')),
+        'Mission'        => get_option('tryl_nav_mission', home_url('/mission/')),
+        'Prayer Request' => get_option('tryl_nav_prayer', home_url('/prayer-request/')),
+        'Contact'        => get_option('tryl_nav_contact', home_url('/contact/')),
     ];
-    if ( get_option('tryl_header_checkout_cta', '1') === '1' ) {
-        $nav_items['Checkout'] = $checkout_url;
-    }
-    $nav_items['Mission']        = get_option('tryl_nav_mission', home_url('/mission/'));
-    $nav_items['Prayer Request'] = get_option('tryl_nav_prayer', home_url('/prayer-request/'));
-    $nav_items['Contact']        = get_option('tryl_nav_contact', home_url('/contact/'));
     ?>
     <style id="tryl-nav-resiliency-inline">
     .tryl-mobile-nav:not(.open) { display: none !important; }
@@ -1527,22 +1411,13 @@ function tryl_inject_nav_bar() {
       <?php else : ?>
       <a href="<?php echo esc_url(home_url('/')); ?>" class="tryl-nav-brand-bar">The Righteous Yield Life</a>
       <?php endif; ?>
-      <ul class="tryl-nav-links-bar">
-        <?php foreach($nav_items as $label=>$href): 
-            $is_checkout = (strtolower($label) === 'checkout');
-            $link_class = $is_checkout ? 'tryl-nav-cta-btn' : '';
-        ?>
-        <li><a href="<?php echo esc_url($href);?>" class="<?php echo $link_class; ?>"><?php echo esc_html($label);?></a></li>
-        <?php endforeach;?>
-        <li class="desktop-search" style="display:flex;align-items:center;">
-            <form role="search" method="get" class="tryl-nav-search" action="<?php echo esc_url( home_url( '/' ) ); ?>">
-                <input type="hidden" name="post_type" value="product" />
-                <input type="search" class="tryl-search-field" placeholder="Search..." value="<?php echo get_search_query(); ?>" name="s" />
-                <button type="submit" class="tryl-search-btn" aria-label="Search">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                </button>
-            </form>
-        </li>
+       <ul class="tryl-nav-links-bar">
+         <?php foreach($nav_items as $label=>$href): 
+             $is_checkout = (strtolower($label) === 'checkout');
+             $link_class = $is_checkout ? 'tryl-nav-cta-btn' : '';
+         ?>
+         <li><a href="<?php echo esc_url($href);?>" class="<?php echo $link_class; ?>"><?php echo esc_html($label);?></a></li>
+         <?php endforeach;?>
         <li style="display:flex;align-items:center;margin-left:8px;">
             <a href="<?php echo esc_url($cart_url); ?>" style="position:relative;display:flex;align-items:center;text-decoration:none;" aria-label="Cart">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
@@ -1560,15 +1435,6 @@ function tryl_inject_nav_bar() {
       </button>
     </nav>
     <div class="tryl-mobile-nav" id="trylMobileNav">
-      <div class="tryl-mobile-search">
-          <form role="search" method="get" class="tryl-nav-search" action="<?php echo esc_url( home_url( '/' ) ); ?>">
-              <input type="hidden" name="post_type" value="product" />
-              <input type="search" class="tryl-search-field" placeholder="Search products..." value="<?php echo get_search_query(); ?>" name="s" />
-              <button type="submit" class="tryl-search-btn" aria-label="Search">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              </button>
-          </form>
-      </div>
       <?php foreach($nav_items as $label=>$href): 
             $is_checkout = (strtolower($label) === 'checkout');
             $link_class = $is_checkout ? 'tryl-nav-cta-btn' : '';
@@ -1669,8 +1535,11 @@ function tryl_global_footer_css() {
     ?>
     <style>
     /* ── Site Footer (Global) ── */
+    <?php if ( get_option('tryl_hide_theme_footer', '1') === '1' ) : ?>
     /* Hide default footers from Divi/SeedProd to prevent duplicates */
     #main-footer, footer.site-footer, #colophon, .site-info, .footer-widgets { display: none !important; }
+    #main-footer, footer.site-footer, #colophon, .site-info, .footer-widgets, #seedprod-footer, #sp-footer, .seedprod-footer { display: none !important; }
+    <?php endif; ?>
     
     .tryl-global-footer {
         background: var(--ry-footer-bg);
@@ -1842,6 +1711,7 @@ add_action( 'wp_footer', 'tryl_inject_global_footer', 5 );
 // ─── 6. RICH PRODUCT IMAGES ON CHECKOUT ORDER REVIEW ─────────────────────────
 function tryl_checkout_item_name( $name, $cart_item, $key ) {
     if ( ! function_exists( 'is_checkout' ) || ! is_checkout() ) return $name;
+    if ( empty( $cart_item['data'] ) || ! is_object( $cart_item['data'] ) ) return $name;
     $product  = $cart_item['data'];
     $img_url  = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
     if ( ! $img_url ) return $name;
@@ -1957,6 +1827,9 @@ function tryl_mini_cart_assets() {
     .tryl-mc-free-ship-msg strong { color: var(--mc-accent); }
     .tryl-mc-progress-bg { height: 6px; background: var(--mc-border); border-radius: 3px; overflow: hidden; }
     .tryl-mc-progress-bar { height: 100%; background: var(--mc-accent); transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .tryl-mc-express-wrap { margin-bottom: 12px; }
+    .tryl-mc-express-wrap .woocommerce-mini-cart__buttons, .tryl-mc-express-wrap .button.wc-forward { display: none !important; }
+    .tryl-mc-express-wrap #wc-stripe-payment-request-wrapper { padding: 0 !important; margin: 0 !important; }
     </style>
     <?php
 }
@@ -2083,12 +1956,12 @@ function tryl_mini_cart_html() {
 
       <div class="tryl-mc-footer" id="trylMcFooter" <?php if ( empty( $items ) ) echo 'style="display:none"'; ?>>
         <?php 
-          $subtotal_numeric = (float) WC()->cart->get_subtotal();
+          $subtotal_numeric = WC()->cart ? (float) WC()->cart->get_cart_contents_total() : 0;
           $free_ship_val = (float) $free_ship_threshold;
-          $percent = min(100, ($subtotal_numeric / $free_ship_val) * 100);
-          $diff = $free_ship_val - $subtotal_numeric;
+          $percent = $free_ship_val > 0 ? min(100, ($subtotal_numeric / $free_ship_val) * 100) : 100;
+          $diff = max(0, $free_ship_val - $subtotal_numeric);
         ?>
-        <div class="tryl-mc-free-ship-wrap">
+        <div class="tryl-mc-free-ship-wrap" id="trylMcFreeShipWrap">
           <div class="tryl-mc-free-ship-msg">
             <?php if ( $diff > 0 ): ?>
               You're only <strong>$<?php echo number_format($diff, 2); ?></strong> away from free shipping!
@@ -2097,12 +1970,15 @@ function tryl_mini_cart_html() {
             <?php endif; ?>
           </div>
           <div class="tryl-mc-progress-bg">
-            <div class="tryl-mc-progress-bar" style="width: <?php echo $percent; ?>%"></div>
+            <div class="tryl-mc-progress-bar" style="width: <?php echo esc_attr($percent); ?>%"></div>
           </div>
         </div>
         <div class="tryl-mc-subtotal">
           <span class="tryl-mc-subtotal-label">Subtotal</span>
           <span class="tryl-mc-subtotal-amount" id="trylMcSubtotal"><?php echo wp_kses_post($subtotal); ?></span>
+        </div>
+        <div class="tryl-mc-express-wrap">
+          <?php do_action( 'woocommerce_widget_shopping_cart_buttons' ); ?>
         </div>
         <div class="tryl-mc-btns">
           <a href="<?php echo esc_url( $checkout_url ); ?>" class="tryl-mc-btn tryl-mc-btn-checkout">Checkout</a>
@@ -2110,121 +1986,6 @@ function tryl_mini_cart_html() {
         </div>
       </div>
     </div>
-
-    <script>
-    (function(){
-      "use strict";
-      
-      // Ensure trylMiniCart global variable exists
-      window.trylMiniCart = window.trylMiniCart || {
-        ajaxurl: '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>',
-        btnText: '<?php echo esc_js( get_option('tryl_atc_btn_text', 'Added!') ); ?>',
-        autoOpen: '<?php echo esc_js( get_option('tryl_auto_open_cart', '1') ); ?>',
-        animEffect: '<?php echo esc_js( get_option('tryl_cart_anim_effect', 'scale') ); ?>',
-        checkoutUrl: '<?php echo esc_js( function_exists('wc_get_checkout_url') ? wc_get_checkout_url() : home_url('/checkout/') ); ?>'
-      };
-      
-      var overlay = document.getElementById('trylMcOverlay');
-      var drawer = document.getElementById('trylMcDrawer');
-      
-      window.trylOpenCart = function() {
-          if (overlay && drawer) {
-              overlay.classList.add('open');
-              drawer.classList.add('open');
-              if (typeof gsap !== 'undefined') {
-                  gsap.to(drawer, { x: '0%', duration: 0.45, ease: 'power3.out' });
-              } else {
-                  drawer.style.transform = 'translateX(0)';
-              }
-              window.trylRefreshCart();
-          } else {
-              window.location.href = window.trylMiniCart.checkoutUrl;
-          }
-      };
-      
-      window.trylCloseCart = function() {
-          if (overlay && drawer) {
-              overlay.classList.remove('open');
-              if (typeof gsap !== 'undefined') {
-                  gsap.to(drawer, { x: '100%', duration: 0.35, ease: 'power2.in', onComplete: () => drawer.classList.remove('open') });
-              } else {
-                  drawer.style.transform = 'translateX(100%)';
-                  drawer.classList.remove('open');
-              }
-          }
-      };
-      
-      window.trylRefreshCart = function() {
-          var fd = new FormData();
-          fd.append('action', 'tryl_refresh_minicart');
-          
-          fetch(window.trylMiniCart.ajaxurl, { method: 'POST', body: fd })
-          .then(res => res.json())
-          .then(res => {
-              if (res.success && res.data) {
-                  var itemsContainer = document.getElementById('trylMcItems');
-                  var subtotalEl = document.getElementById('trylMcSubtotal');
-                  var footerEl = document.getElementById('trylMcFooter');
-                  
-                  if (itemsContainer) itemsContainer.innerHTML = res.data.html;
-                  if (subtotalEl) subtotalEl.innerHTML = res.data.subtotal;
-                  
-                  document.querySelectorAll('.tryl-cart-count').forEach(el => {
-                      el.textContent = res.data.count;
-                      if (el.classList.contains('tryl-cart-count-badge')) {
-                          el.style.display = res.data.count > 0 ? 'flex' : 'none';
-                      }
-                  });
-                  
-                  if (footerEl) footerEl.style.display = res.data.count > 0 ? 'block' : 'none';
-                  bindCartEvents();
-              }
-          });
-      };
-      
-      function bindCartEvents() {
-          document.querySelectorAll('.tryl-mc-qty-btn, .tryl-mc-item-remove').forEach(btn => {
-              var newBtn = btn.cloneNode(true);
-              btn.parentNode.replaceChild(newBtn, btn);
-              newBtn.addEventListener('click', function() {
-                  var key = this.dataset.key;
-                  var isRemove = this.classList.contains('tryl-mc-item-remove');
-                  var qty = 0;
-                  if (!isRemove) {
-                      var qtySpan = this.parentNode.querySelector('.tryl-mc-qty-num');
-                      qty = parseInt(qtySpan.textContent);
-                      if (this.classList.contains('tryl-mc-qty-inc')) qty++;
-                      if (this.classList.contains('tryl-mc-qty-dec')) qty--;
-                      if (qty < 0) qty = 0;
-                  }
-                  this.style.opacity = '0.5';
-                  this.style.pointerEvents = 'none';
-                  var fd = new FormData();
-                  fd.append('action', 'tryl_update_cart');
-                  fd.append('cart_key', key);
-                  fd.append('quantity', qty);
-                  fetch(window.trylMiniCart.ajaxurl, { method: 'POST', body: fd })
-                  .then(res => res.json())
-                  .then(res => window.trylRefreshCart());
-              });
-          });
-      }
-      
-      if (overlay) overlay.addEventListener('click', window.trylCloseCart);
-      var closeBtn = document.getElementById('trylMcClose');
-      if (closeBtn) closeBtn.addEventListener('click', window.trylCloseCart);
-      
-      bindCartEvents();
-      
-      // Auto-open drawer on page load if a WooCommerce message indicates an added product
-      var wooMsg = document.querySelector('.woocommerce-message');
-      if (wooMsg && (wooMsg.textContent.indexOf('added') !== -1 || wooMsg.textContent.indexOf('Added') !== -1)) {
-          setTimeout(function() { 
-              if (typeof window.trylOpenCart === 'function' && window.trylMiniCart.autoOpen === '1') window.trylOpenCart(); 
-          }, 400);
-      }
-    })();
-    </script>
     <?php
 }
 add_action( 'wp_footer', 'tryl_mini_cart_html' );
@@ -2322,11 +2083,31 @@ function tryl_refresh_minicart_handler() {
 
     $html = ob_get_clean();
 
+    $free_ship_val = (float) get_option('tryl_free_shipping_threshold', '75');
+    $subtotal_numeric = WC()->cart ? (float) WC()->cart->get_cart_contents_total() : 0;
+    $percent = $free_ship_val > 0 ? min(100, ($subtotal_numeric / $free_ship_val) * 100) : 100;
+    $diff = max(0, $free_ship_val - $subtotal_numeric);
+    
+    ob_start();
+    ?>
+          <div class="tryl-mc-free-ship-msg">
+            <?php if ( $diff > 0 ): ?>
+              You're only <strong>$<?php echo number_format($diff, 2); ?></strong> away from free shipping!
+            <?php else: ?>
+              🎉 You've unlocked <strong>Free Shipping!</strong>
+            <?php endif; ?>
+          </div>
+          <div class="tryl-mc-progress-bg">
+            <div class="tryl-mc-progress-bar" style="width: <?php echo esc_attr($percent); ?>%"></div>
+          </div>
+    <?php
+    $free_ship_html = ob_get_clean();
+
     wp_send_json_success( [
         'html'      => $html,
         'subtotal'  => $subtotal,
         'count'     => $count,
-        'free_ship' => $count > 0 ? 'Free shipping on orders over $' . esc_html(get_option('tryl_free_shipping_threshold', '75')) : '',
+        'free_ship_html' => $free_ship_html,
     ] );
 }
 add_action( 'wp_ajax_tryl_refresh_minicart', 'tryl_refresh_minicart_handler' );
@@ -2629,6 +2410,13 @@ function tryl_register_custom_blocks() {
         'editor_script'   => 'tryl-blocks-editor-script',
         'render_callback' => 'tryl_order_tracker_shortcode' 
     ) );
+    
+    // Register the Complete The Look Block
+    register_block_type( 'tryl/complete-look-block', array(
+        'api_version'     => 2,
+        'editor_script'   => 'tryl-blocks-editor-script',
+        'render_callback' => 'tryl_complete_the_look_shortcode' 
+    ) );
 }
 add_action( 'init', 'tryl_register_custom_blocks' );
 
@@ -2868,6 +2656,7 @@ function tryl_register_shortcodes() {
     add_shortcode( 'tryl_prayer_request', 'tryl_prayer_form_shortcode' ); // Alias for convenience
     add_shortcode( 'tryl_prayer_wall', 'tryl_prayer_wall_shortcode' );
     add_shortcode( 'tryl_order_tracker', 'tryl_order_tracker_shortcode' ); // Public Tracker
+    add_shortcode( 'tryl_complete_the_look', 'tryl_complete_the_look_shortcode' ); // Cross-sells
 }
 // Hook with early priority (5) to ensure registration before most page builders process content
 add_action( 'init', 'tryl_register_shortcodes', 5 );
@@ -2922,7 +2711,9 @@ function tryl_order_tracker_shortcode() {
     $order = false;
     
     if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['tryl_track_order']) ) {
-        if ( empty( $order_id ) || empty( $order_email ) ) {
+        if ( ! isset( $_POST['tryl_track_order_nonce'] ) || ! wp_verify_nonce( $_POST['tryl_track_order_nonce'], 'tryl_track_order_action' ) ) {
+            $error = 'Security session expired. Please refresh the page and try again.';
+        } else if ( empty( $order_id ) || empty( $order_email ) ) {
             $error = 'Please enter both your Order ID and Email Address.';
         } else {
             $order_id = str_replace( '#', '', $order_id );
@@ -2947,11 +2738,47 @@ function tryl_order_tracker_shortcode() {
             <form method="post" action="" style="background:var(--card-bg, #fff); border:1px solid var(--border, #d4e0d4); padding:40px 32px; border-radius:12px; box-shadow: 0 10px 30px rgba(0,0,0,0.03);">
                 <h3 style="margin-top:0; font-family:var(--tryl-header-font, sans-serif); text-transform:uppercase; font-size:1.8rem; color:var(--dark, #0d1b0f); margin-bottom:12px;">Track Your Order</h3>
                 <p style="color:var(--muted, #6b7c6b); font-size:0.95rem; margin-bottom:32px; line-height:1.6;">Enter your Order ID and the email address you used during checkout to see the current status of your shipment.</p>
+                <?php wp_nonce_field( 'tryl_track_order_action', 'tryl_track_order_nonce' ); ?>
                 <div style="margin-bottom:20px;"><label style="display:block; font-weight:700; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; color:var(--txt, #1a2e1a);">Order ID</label><input type="text" name="order_id" required placeholder="e.g. 12345" style="width:100%; padding:16px; border:1px solid var(--border, #d4e0d4); border-radius:8px; font-family:inherit; background:var(--bg, #f5f8f5);" value="<?php echo esc_attr($order_id); ?>"></div>
                 <div style="margin-bottom:32px;"><label style="display:block; font-weight:700; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px; color:var(--txt, #1a2e1a);">Billing Email</label><input type="email" name="order_email" required placeholder="you@example.com" style="width:100%; padding:16px; border:1px solid var(--border, #d4e0d4); border-radius:8px; font-family:inherit; background:var(--bg, #f5f8f5);" value="<?php echo esc_attr($order_email); ?>"></div>
                 <button type="submit" name="tryl_track_order" value="1" style="width:100%; background:var(--dark, #0d1b0f); color:var(--btn-txt, #fff); border:none; padding:18px; font-weight:800; text-transform:uppercase; letter-spacing:0.15em; cursor:pointer; border-radius:40px; transition:all 0.3s;">Track Order</button>
             </form>
         <?php endif; ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+}
+
+if ( ! function_exists( 'tryl_complete_the_look_shortcode' ) ) {
+function tryl_complete_the_look_shortcode() {
+    // Gutenberg Editor Preview Placeholder
+    if ( is_admin() && defined( 'REST_REQUEST' ) && REST_REQUEST ) {
+        return '<div style="padding: 24px; text-align: center; background: #f5f8f5; border: 2px dashed #d4e0d4; color: #1a2e1a; font-family: sans-serif; margin: 24px 0;"><strong>Complete The Look Grid</strong><br><span style="color:#6b7c6b; font-size:0.85rem;">Dynamic WooCommerce cross-sell products will appear here on the live product page.</span></div>';
+    }
+
+    if ( ! class_exists( 'WooCommerce' ) || ! function_exists( 'is_product' ) || ! is_product() ) return '';
+    global $product;
+    if ( ! $product || ! is_object( $product ) ) return '';
+    
+    $cross_sells = $product->get_cross_sell_ids();
+    $is_related = false;
+    if ( empty( $cross_sells ) ) {
+        $cross_sells = wc_get_related_products( $product->get_id(), 4 );
+        $is_related = true;
+    }
+    if ( empty( $cross_sells ) ) return '';
+    
+    $cross_products = wc_get_products( [ 'include' => $cross_sells, 'limit' => 4, 'return' => 'objects' ] );
+    if ( empty( $cross_products ) ) return '';
+    
+    ob_start();
+    ?>
+    <div class="tryl-complete-look" style="margin: 64px 0; border-top: 1px solid var(--border, #eee); padding-top: 48px;">
+        <h3 style="font-family: var(--tryl-header-font, sans-serif); text-transform: uppercase; font-size: 1.5rem; letter-spacing: 0.05em; margin-bottom: 32px; color: var(--dark, #111);"><?php echo $is_related ? 'You May Also Like' : 'Complete The Look'; ?></h3>
+        <div class="tryl-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+            <?php foreach ( $cross_products as $cross_product ) echo tryl_get_core_product_card_html( $cross_product ); ?>
+        </div>
     </div>
     <?php
     return ob_get_clean();
@@ -2987,6 +2814,11 @@ function tryl_hero_section_shortcode( $atts ) {
     .tryl-hero-btn { transition: background 0.3s, transform 0.3s; display:inline-block; padding:14px 28px; background:#0d1b0f; color:#fff; font-family:'Inter', sans-serif; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; font-size:0.75rem; text-decoration:none; }
     .tryl-hero-btn:hover { background: #31d190 !important; color: #0d1b0f !important; transform: translateY(-3px); }
     </style>
+    <?php
+    tryl_add_shortcode_asset( ob_get_clean() );
+    
+    ob_start();
+    ?>
     <section style="position:relative; width:100%; height:80vh; min-height:500px; display:flex; align-items:center; justify-content:center; background:#fff; overflow:hidden;">
         <!-- SEO Upgrade: Visually hidden semantic H1 tag for web crawlers -->
         <h1 style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(1px,1px,1px,1px);"><?php echo esc_html( $text_left . ' ' . $text_right ); ?></h1>
@@ -3014,13 +2846,44 @@ function tryl_hero_section_shortcode( $atts ) {
 // ─── 12. ADMIN DASHBOARD SETTINGS ────────────────────────────────────────────
 function tryl_register_admin_page() {
     add_menu_page( 'TRYL Settings', 'TRYL Settings', 'manage_options', 'tryl-ecommerce-settings', 'tryl_admin_page_html', 'dashicons-admin-generic', 58 );
+    add_submenu_page( 'tryl-ecommerce-settings', 'General', 'General', 'manage_options', 'tryl-ecommerce-settings&tab=general', 'tryl_admin_page_html' );
     add_submenu_page( 'tryl-ecommerce-settings', 'Shop Settings', 'Shop Settings', 'manage_options', 'tryl-ecommerce-settings&tab=shop', 'tryl_admin_page_html' );
-    add_submenu_page( 'tryl-ecommerce-settings', 'Checkout Settings', 'Checkout Settings', 'manage_options', 'tryl-ecommerce-settings&tab=checkout', 'tryl_admin_page_html' );
+    add_submenu_page( 'tryl-ecommerce-settings', 'Checkout Flow', 'Checkout Flow', 'manage_options', 'tryl-ecommerce-settings&tab=checkout', 'tryl_admin_page_html' );
+    add_submenu_page( 'tryl-ecommerce-settings', 'Store Design', 'Store Design', 'manage_options', 'tryl-ecommerce-settings&tab=design', 'tryl_admin_page_html' );
+    add_submenu_page( 'tryl-ecommerce-settings', 'Marketing', 'Marketing', 'manage_options', 'tryl-ecommerce-settings&tab=marketing', 'tryl_admin_page_html' );
+    add_submenu_page( 'tryl-ecommerce-settings', 'APIs & Tools', 'APIs & Tools', 'manage_options', 'tryl-ecommerce-settings&tab=integrations', 'tryl_admin_page_html' );
+    add_submenu_page( 'tryl-ecommerce-settings', 'Communications', 'Communications', 'manage_options', 'tryl-ecommerce-settings&tab=communications', 'tryl_admin_page_html' );
+    add_submenu_page( 'tryl-ecommerce-settings', 'Analytics & Reports', 'Analytics', 'manage_options', 'tryl-ecommerce-settings&tab=analytics', 'tryl_admin_page_html' );
+    add_submenu_page( 'tryl-ecommerce-settings', 'Data & Migration', 'Data & Migration', 'manage_options', 'tryl-ecommerce-settings&tab=migration', 'tryl_admin_page_html' );
+    add_submenu_page( 'tryl-ecommerce-settings', 'Dashboard UI', 'Dashboard UI', 'manage_options', 'tryl-ecommerce-settings&tab=adminui', 'tryl_admin_page_html' );
+    add_submenu_page( 'tryl-ecommerce-settings', 'Shortcodes & Docs', 'Shortcodes & Docs', 'manage_options', 'tryl-ecommerce-settings&tab=docs', 'tryl_admin_page_html' );
 }
 add_action( 'admin_menu', 'tryl_register_admin_page' );
 
+// ─── ADMIN SCRIPTS ─────────────────────────────────────────────────────────
+function tryl_admin_enqueue_scripts( $hook_suffix ) {
+    // Only load on TRYL Ecosystem Settings pages
+    if ( strpos( $hook_suffix, 'tryl-ecommerce-settings' ) === false ) {
+        return;
+    }
+    
+    // Enqueue GSAP for the admin UI animations
+    wp_enqueue_script( 'gsap', 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js', [], null, true );
+    
+    // Enqueue the newly extracted custom admin JS
+    $plugin_url = plugin_dir_url( __FILE__ );
+    wp_enqueue_script( 'tryl-admin-js', $plugin_url . 'assets/js/tryl-admin.js', ['jquery'], '3.19', true );
+    
+    // Localize variables so we don't have to echo PHP directly in the JS
+    wp_localize_script( 'tryl-admin-js', 'trylAdminSettings', [
+        'ajaxurl' => admin_url( 'admin-ajax.php' ),
+        'nonce'   => wp_create_nonce( 'tryl_admin_actions' )
+    ]);
+}
+add_action( 'admin_enqueue_scripts', 'tryl_admin_enqueue_scripts' );
+
 function tryl_register_settings() {
-    $settings = ['tryl_default_theme', 'tryl_font_pack', 'tryl_shop_grid_limit', 'tryl_shop_grid_columns', 'tryl_nav_active', 'tryl_nav_shop', 'tryl_nav_checkout', 'tryl_nav_mission', 'tryl_nav_prayer', 'tryl_nav_contact', 'tryl_nav_shipping', 'tryl_nav_faq', 'tryl_nav_privacy', 'tryl_nav_terms', 'tryl_footer_active', 'tryl_free_shipping_threshold', 'tryl_footer_desc', 'tryl_prayer_email', 'tryl_developer_signature', 'tryl_header_logo', 'tryl_printful_token', 'tryl_printful_sync_enabled', 'tryl_printful_sync_time', 'tryl_printful_auto_publish', 'tryl_printful_inventory_sync', 'tryl_announcement_active', 'tryl_announcement_text', 'tryl_announcement_url', 'tryl_announcement_bg', 'tryl_announcement_text_color', 'tryl_badges_active', 'tryl_badges_new_days', 'tryl_badges_bestseller_sales', 'tryl_badges_bg', 'tryl_badges_text_color', 'tryl_footer_layout_style', 'tryl_footer_hover_anim', 'tryl_footer_mobile_center', 'tryl_popup_active', 'tryl_popup_heading', 'tryl_popup_text', 'tryl_popup_action_url', 'tryl_popup_btn_text', 'tryl_nextgen_emails_active', 'tryl_email_hero_url', 'tryl_email_footer_msg', 'tryl_checkout_animations', 'tryl_hero_image', 'tryl_hero_text_left', 'tryl_hero_text_right', 'tryl_hero_btn_text', 'tryl_hero_btn_url', 'tryl_nike_checkout_active', 'tryl_nike_checkout_accent', 'tryl_nike_checkout_input_bg', 'tryl_premium_products_active', 'tryl_custom_404_active', 'tryl_prayer_auto_sub', 'tryl_prayer_auto_msg', 'tryl_checkout_features_active', 'tryl_gift_wrapping_fee', 'tryl_product_accordion_active', 'tryl_product_accordion_title', 'tryl_product_accordion_content', 'tryl_product_accordion_categories', 'tryl_atc_btn_text', 'tryl_atc_notice_active', 'tryl_atc_notice_text', 'tryl_sp_trust_badges_active', 'tryl_header_checkout_cta', 'tryl_floating_checkout_active', 'tryl_mobile_menu_align', 'tryl_social_instagram', 'tryl_social_tiktok', 'tryl_social_twitter', 'tryl_social_youtube', 'tryl_social_facebook', 'tryl_myaccount_reskin_active', 'tryl_order_bump_active', 'tryl_order_bump_label', 'tryl_order_bump_fee', 'tryl_auto_open_cart', 'tryl_cart_anim_effect', 'tryl_mockup_engine', 'tryl_printful_ps_email', 'tryl_printful_ps_phone', 'tryl_printful_ps_message', 'tryl_printful_ps_store_name', 'tryl_printful_live_shipping', 'tryl_whatsapp_token', 'tryl_whatsapp_phone_id', 'tryl_whatsapp_order_active', 'tryl_whatsapp_order_template', 'tryl_whatsapp_ship_active', 'tryl_whatsapp_ship_template', 'tryl_email_tracking_active', 'tryl_email_tracking_subject', 'tryl_email_tracking_body', 'tryl_wa_draft_text', 'tryl_admin_ui_primary', 'tryl_admin_ui_accent', 'tryl_admin_ui_bg', 'tryl_admin_ui_border', 'tryl_admin_ui_card', 'tryl_admin_ui_text', 'tryl_admin_ui_muted', 'tryl_target_margin', 'tryl_fulfillment_sla', 'tryl_printful_sandbox_mode', 'tryl_extension_key', 'tryl_custom_h_font', 'tryl_custom_b_font', 'tryl_custom_font_css', 'tryl_font_hero', 'tryl_font_nav', 'tryl_font_btn', 'tryl_newsletter_provider', 'tryl_mailchimp_api', 'tryl_mailchimp_list', 'tryl_klaviyo_api', 'tryl_klaviyo_list', 'tryl_checkout_newsletter_optin', 'tryl_popup_success_msg', 'tryl_checkout_optin_label', 'tryl_welcome_email_active', 'tryl_welcome_email_subject', 'tryl_welcome_email_body', 'tryl_welcome_sms_active', 'tryl_welcome_sms_body', 'tryl_lokbridge_endpoint'];
+    $settings = ['tryl_default_theme', 'tryl_font_pack', 'tryl_shop_layout_style', 'tryl_shop_grid_limit', 'tryl_shop_grid_columns', 'tryl_nav_active', 'tryl_nav_shop', 'tryl_nav_checkout', 'tryl_nav_mission', 'tryl_nav_about', 'tryl_nav_prayer', 'tryl_nav_contact', 'tryl_nav_shipping', 'tryl_nav_faq', 'tryl_nav_privacy', 'tryl_nav_terms', 'tryl_footer_active', 'tryl_free_shipping_threshold', 'tryl_footer_desc', 'tryl_prayer_email', 'tryl_developer_signature', 'tryl_header_logo', 'tryl_printful_token', 'tryl_printful_sync_enabled', 'tryl_printful_sync_time', 'tryl_printful_auto_publish', 'tryl_printful_inventory_sync', 'tryl_announcement_active', 'tryl_announcement_text', 'tryl_announcement_url', 'tryl_announcement_bg', 'tryl_announcement_text_color', 'tryl_badges_active', 'tryl_badges_new_days', 'tryl_badges_bestseller_sales', 'tryl_badges_bg', 'tryl_badges_text_color', 'tryl_footer_layout_style', 'tryl_footer_hover_anim', 'tryl_footer_mobile_center', 'tryl_popup_active', 'tryl_popup_heading', 'tryl_popup_text', 'tryl_popup_action_url', 'tryl_popup_btn_text', 'tryl_nextgen_emails_active', 'tryl_email_hero_url', 'tryl_email_footer_msg', 'tryl_checkout_animations', 'tryl_hero_image', 'tryl_hero_text_left', 'tryl_hero_text_right', 'tryl_hero_btn_text', 'tryl_hero_btn_url', 'tryl_nike_checkout_active', 'tryl_nike_checkout_accent', 'tryl_nike_checkout_input_bg', 'tryl_premium_products_active', 'tryl_custom_404_active', 'tryl_prayer_auto_sub', 'tryl_prayer_auto_msg', 'tryl_checkout_features_active', 'tryl_gift_wrapping_fee', 'tryl_product_accordion_active', 'tryl_product_accordion_title', 'tryl_product_accordion_content', 'tryl_product_accordion_categories', 'tryl_atc_btn_text', 'tryl_atc_notice_active', 'tryl_atc_notice_text', 'tryl_sp_trust_badges_active', 'tryl_header_checkout_cta', 'tryl_floating_checkout_active', 'tryl_mobile_menu_align', 'tryl_social_instagram', 'tryl_social_tiktok', 'tryl_social_twitter', 'tryl_social_youtube', 'tryl_social_facebook', 'tryl_myaccount_reskin_active', 'tryl_order_bump_active', 'tryl_order_bump_label', 'tryl_order_bump_fee', 'tryl_auto_open_cart', 'tryl_cart_anim_effect', 'tryl_mockup_engine', 'tryl_printful_ps_email', 'tryl_printful_ps_phone', 'tryl_printful_ps_message', 'tryl_printful_ps_store_name', 'tryl_printful_live_shipping', 'tryl_whatsapp_token', 'tryl_whatsapp_phone_id', 'tryl_whatsapp_order_active', 'tryl_whatsapp_order_template', 'tryl_whatsapp_ship_active', 'tryl_whatsapp_ship_template', 'tryl_email_tracking_active', 'tryl_email_tracking_subject', 'tryl_email_tracking_body', 'tryl_wa_draft_text', 'tryl_admin_ui_primary', 'tryl_admin_ui_accent', 'tryl_admin_ui_bg', 'tryl_admin_ui_border', 'tryl_admin_ui_card', 'tryl_admin_ui_text', 'tryl_admin_ui_muted', 'tryl_target_margin', 'tryl_fulfillment_sla', 'tryl_printful_sandbox_mode', 'tryl_extension_key', 'tryl_custom_h_font', 'tryl_custom_b_font', 'tryl_custom_font_css', 'tryl_font_hero', 'tryl_font_nav', 'tryl_font_btn', 'tryl_newsletter_provider', 'tryl_mailchimp_api', 'tryl_mailchimp_list', 'tryl_klaviyo_api', 'tryl_klaviyo_list', 'tryl_checkout_newsletter_optin', 'tryl_popup_success_msg', 'tryl_checkout_optin_label', 'tryl_welcome_email_active', 'tryl_welcome_email_subject', 'tryl_welcome_email_body', 'tryl_welcome_sms_active', 'tryl_welcome_sms_body', 'tryl_lokbridge_endpoint', 'tryl_hide_theme_header', 'tryl_hide_theme_footer', 'tryl_printful_dynamic_desc', 'tryl_printful_size_guide_sync', 'tryl_checkout_layout_style'];
     foreach ($settings as $setting) {
         register_setting('tryl_settings_group', $setting);
     }
@@ -3042,34 +2905,146 @@ function tryl_sandbox_admin_notice() {
 if ( ! function_exists( 'tryl_documentation_tab_content' ) ) {
 function tryl_documentation_tab_content() {
     ?>
-    <div class="tryl-guide-card">
-        <h3>Available Shortcodes</h3>
-        <p>Copy and paste these anywhere on your site:</p>
-        <div class="tryl-url-box">[tryl_3d_shop]</div>
-        <p class="description" style="margin-bottom:16px;">Renders the full 3D interactive shop grid.</p>
+    <style>
+        .tryl-sc-card { background: var(--tryl-bg); border: 1px solid var(--tryl-border); border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.02); transition: transform 0.2s, border-color 0.2s; }
+        .tryl-sc-card:hover { transform: translateY(-2px); border-color: var(--tryl-accent); }
+        .tryl-sc-title { margin-top: 0; font-size: 1.15rem; color: var(--tryl-primary); display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--tryl-border); padding-bottom: 12px; margin-bottom: 16px; text-transform: uppercase; font-family: var(--tryl-header-font, sans-serif); letter-spacing: 0.05em; }
+        .tryl-sc-box { background: #0d1b0f; color: #31d190; padding: 16px 20px; border-radius: 8px; font-family: monospace; font-size: 1.2rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin: 16px 0; transition: background 0.2s, transform 0.1s; }
+        .tryl-sc-box:hover { background: #1a2e1a; }
+        .tryl-sc-box:active { transform: scale(0.98); }
+        .tryl-sc-box-hint { font-size: 0.75rem; color: #8a9c8a; text-transform: uppercase; letter-spacing: 0.1em; background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 40px; }
+        .tryl-sc-ideas { background: rgba(49, 209, 144, 0.05); padding: 16px 20px; border-left: 3px solid #31d190; border-radius: 0 8px 8px 0; margin-top: 20px; }
+        .tryl-sc-ideas-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: #2d6a4f; font-weight: 800; margin-bottom: 8px; display: block; }
+        .tryl-sc-ideas ul { margin: 0; padding-left: 20px; font-size: 0.9rem; color: var(--tryl-text); line-height: 1.6; }
+        .tryl-sc-ideas li { margin-bottom: 6px; }
+        .tryl-sc-ideas li:last-child { margin-bottom: 0; }
+    </style>
+    
+    <p class="description" style="font-size: 1.05rem; margin-bottom: 32px; max-width: 800px; line-height: 1.6;">Click any shortcode block below to instantly copy it to your clipboard. You can paste these directly into <strong>any Page, Post, Divi Text Module, or SeedProd Shortcode element</strong> across your website.</p>
+    
+    <div class="tryl-guide-grid">
+        <div class="tryl-sc-card">
+            <h3 class="tryl-sc-title"><span class="dashicons dashicons-grid-view"></span> Master Shop Grid</h3>
+            <p class="description">Renders the full interactive storefront. Includes 3D image tilt effects, category filters, dynamic badges, and GSAP-powered quick-add dropdowns.</p>
+            <div class="tryl-sc-box" title="Click to copy" onclick="navigator.clipboard.writeText('[tryl_3d_shop]'); const h=this.querySelector('.tryl-sc-box-hint'); h.innerText='Copied!'; setTimeout(()=>h.innerText='Click to copy', 2000);">
+                [tryl_3d_shop]
+                <span class="tryl-sc-box-hint">Click to copy</span>
+            </div>
+            <div class="tryl-sc-ideas">
+                <span class="tryl-sc-ideas-title">💡 Deployment Ideas:</span>
+                <ul>
+                    <li>Create a blank page named "Shop", drop this in, and set it as your main storefront.</li>
+                    <li>Paste it at the bottom of your "About" or "Mission" page to convert engaged readers directly into buyers.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="tryl-sc-card">
+            <h3 class="tryl-sc-title"><span class="dashicons dashicons-cover-image"></span> Premium Hero Section</h3>
+            <p class="description">Renders the highly-stylized, Nike-inspired split-text hero image section configured in your <strong>Store Design</strong> tab.</p>
+            <div class="tryl-sc-box" title="Click to copy" onclick="navigator.clipboard.writeText('[tryl_hero]'); const h=this.querySelector('.tryl-sc-box-hint'); h.innerText='Copied!'; setTimeout(()=>h.innerText='Click to copy', 2000);">
+                [tryl_hero]
+                <span class="tryl-sc-box-hint">Click to copy</span>
+            </div>
+            <div class="tryl-sc-ideas">
+                <span class="tryl-sc-ideas-title">💡 Deployment Ideas:</span>
+                <ul>
+                    <li>Place this at the very top of your SeedProd Homepage to create an immediate, high-end brand impression.</li>
+                    <li>Use it above your Shop Grid during major collection drops or seasonal sales.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="tryl-sc-card">
+            <h3 class="tryl-sc-title"><span class="dashicons dashicons-feedback"></span> Prayer Request Form</h3>
+            <p class="description">A secure submission portal. Visitors can send prayer requests directly to your WordPress backend, automatically triggering a comforting email response.</p>
+            <div class="tryl-sc-box" title="Click to copy" onclick="navigator.clipboard.writeText('[tryl_prayer_form]'); const h=this.querySelector('.tryl-sc-box-hint'); h.innerText='Copied!'; setTimeout(()=>h.innerText='Click to copy', 2000);">
+                [tryl_prayer_form]
+                <span class="tryl-sc-box-hint">Click to copy</span>
+            </div>
+            <div class="tryl-sc-ideas">
+                <span class="tryl-sc-ideas-title">💡 Deployment Ideas:</span>
+                <ul>
+                    <li>Build a dedicated "Prayer Request" landing page to foster community engagement.</li>
+                    <li>Add it below your primary Contact Form as a supportive, faith-based alternative.</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="tryl-sc-card">
+            <h3 class="tryl-sc-title"><span class="dashicons dashicons-format-gallery"></span> Public Prayer Wall</h3>
+            <p class="description">Renders a beautiful masonry layout showcasing all the prayer requests you have explicitly marked as "Approved for Public Wall" inside the backend.</p>
+            <div class="tryl-sc-box" title="Click to copy" onclick="navigator.clipboard.writeText('[tryl_prayer_wall]'); const h=this.querySelector('.tryl-sc-box-hint'); h.innerText='Copied!'; setTimeout(()=>h.innerText='Click to copy', 2000);">
+                [tryl_prayer_wall]
+                <span class="tryl-sc-box-hint">Click to copy</span>
+            </div>
+            <div class="tryl-sc-ideas">
+                <span class="tryl-sc-ideas-title">💡 Deployment Ideas:</span>
+                <ul>
+                    <li>Place this directly below your <code>[tryl_prayer_form]</code> so visitors can actively read and pray for others after submitting their own.</li>
+                    <li>Embed it on your Mission page to visually validate the spiritual impact of your brand.</li>
+                </ul>
+            </div>
+        </div>
         
-        <div class="tryl-url-box">[tryl_hero]</div>
-        <p class="description" style="margin-bottom:16px;">Renders the premium split-text hero section.</p>
+        <div class="tryl-sc-card">
+            <h3 class="tryl-sc-title"><span class="dashicons dashicons-editor-table"></span> Dynamic Size Guide</h3>
+            <p class="description">Renders a premium HTML table featuring real-time size measurements (Inches & CM) fetched automatically from the Printful API during product synchronization.</p>
+            <div class="tryl-sc-box" title="Click to copy" onclick="navigator.clipboard.writeText('[tryl_size_chart]'); const h=this.querySelector('.tryl-sc-box-hint'); h.innerText='Copied!'; setTimeout(()=>h.innerText='Click to copy', 2000);">
+                [tryl_size_chart]
+                <span class="tryl-sc-box-hint">Click to copy</span>
+            </div>
+            <div class="tryl-sc-ideas">
+                <span class="tryl-sc-ideas-title">💡 Deployment Ideas:</span>
+                <ul>
+                    <li>Paste this shortcode into the <strong>Accordion Content</strong> box in your TRYL Store Design settings to nest it beautifully inside your product page FAQ layout!</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="tryl-sc-card">
+            <h3 class="tryl-sc-title"><span class="dashicons dashicons-location-alt"></span> Order Tracker (Beta)</h3>
+            <p class="description">A public tracking utility. Customers enter their Order ID and Email to view the GSAP-animated visual progress timeline of their shipment.</p>
+            <div class="tryl-sc-box" title="Click to copy" onclick="navigator.clipboard.writeText('[tryl_order_tracker]'); const h=this.querySelector('.tryl-sc-box-hint'); h.innerText='Copied!'; setTimeout(()=>h.innerText='Click to copy', 2000);">
+                [tryl_order_tracker]
+                <span class="tryl-sc-box-hint">Click to copy</span>
+            </div>
+            <div class="tryl-sc-ideas">
+                <span class="tryl-sc-ideas-title">💡 Deployment Ideas:</span>
+                <ul>
+                    <li>Create a specific "Track Your Order" page, add it to your global footer, and drastically cut down on "Where is my order?" support emails.</li>
+                    <li>Link to this page heavily in your Post-Purchase automated marketing emails.</li>
+                </ul>
+            </div>
+        </div>
         
-        <div class="tryl-url-box">[tryl_prayer_form]</div>
-        <p class="description" style="margin-bottom:16px;">Renders the secure prayer request submission form.</p>
-        
-        <div class="tryl-url-box">[tryl_prayer_wall]</div>
-        <p class="description">Renders approved public prayer requests in a masonry grid.</p>
-        
-        <div class="tryl-url-box">[tryl_order_tracker]</div>
-        <p class="description">Renders the public Order Tracking form (Beta) so users can see their visual progress bar without logging in.</p>
+        <div class="tryl-sc-card">
+            <h3 class="tryl-sc-title"><span class="dashicons dashicons-cart"></span> Complete The Look</h3>
+            <p class="description">Automatically pulls WooCommerce "Cross-Sell" items for the current product and renders them in a premium GSAP-enabled grid.</p>
+            <div class="tryl-sc-box" title="Click to copy" onclick="navigator.clipboard.writeText('[tryl_complete_the_look]'); const h=this.querySelector('.tryl-sc-box-hint'); h.innerText='Copied!'; setTimeout(()=>h.innerText='Click to copy', 2000);">
+                [tryl_complete_the_look]
+                <span class="tryl-sc-box-hint">Click to copy</span>
+            </div>
+            <div class="tryl-sc-ideas">
+                <span class="tryl-sc-ideas-title">💡 Deployment Ideas:</span>
+                <ul>
+                    <li>Place this at the bottom of your Single Product layout to increase Average Order Value (AOV) by upselling related items!</li>
+                </ul>
+            </div>
+        </div>
     </div>
     
-    <div class="tryl-guide-card">
-        <h3>Global Layout Engine</h3>
-        <p>The TRYL Core automatically hijacks specific WooCommerce endpoints to enforce a premium design.</p>
-        <ul style="list-style:disc; padding-left:20px; color:var(--tryl-muted); margin-top:10px;">
-            <li style="margin-bottom:6px;"><strong>Product Pages:</strong> Uses <code>templates/single-product.php</code></li>
-            <li style="margin-bottom:6px;"><strong>Cart:</strong> Globally replaced by the GSAP slide-out mini-cart.</li>
-            <li style="margin-bottom:6px;"><strong>Checkout:</strong> Intercepted and routed to the 2-column Nike-inspired grid.</li>
+    <hr style="margin: 40px 0; border: none; border-top: 1px dashed var(--tryl-border);" />
+    
+    <div class="tryl-admin-card" style="background: rgba(26, 46, 26, 0.02);">
+        <h2 style="font-size: 1.2rem;"><span class="dashicons dashicons-layout"></span> Automatic Layout Interceptors</h2>
+        <p style="margin-top:-10px; margin-bottom:20px; color: var(--tryl-muted);">In addition to the manual shortcodes above, the TRYL Core silently intercepts specific WooCommerce endpoints to enforce a premium design without any configuration required.</p>
+        <ul style="list-style:disc; padding-left:20px; color:var(--tryl-text); line-height: 1.8;">
+            <li><strong>Product Pages:</strong> All individual product clicks automatically override default themes to use the custom Nike-inspired template (<code>templates/single-product.php</code>).</li>
+            <li><strong>The Cart:</strong> Globally disabled and replaced by the GSAP slide-out mini-cart.</li>
+            <li><strong>The Checkout:</strong> Intercepted and rerouted into the highly-optimized 2-column accordion grid (<code>templates/checkout/form-checkout.php</code>).</li>
         </ul>
-        <p style="margin-top:16px; font-size:0.85rem; color:#d63638;"><strong>Note:</strong> Gutenberg Cart/Checkout blocks are forcefully disabled by this plugin to preserve the custom layouts.</p>
+        <p style="margin-top:16px; font-size:0.85rem; color:#d63638; background: #fde8e8; padding: 12px; border-left: 3px solid #d63638; border-radius: 4px;"><strong>Note:</strong> Standard WooCommerce Gutenberg Cart & Checkout blocks are forcefully disabled by this plugin to preserve these high-conversion custom layouts.</p>
     </div>
     <?php
 }
@@ -3086,6 +3061,8 @@ function tryl_admin_page_html() {
     $ui_card    = get_option('tryl_admin_ui_card', '#ffffff');
     $ui_text    = get_option('tryl_admin_ui_text', '#1a2e1a');
     $ui_muted   = get_option('tryl_admin_ui_muted', '#6b7c6b');
+
+    $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'general';
     ?>
     <div class="wrap tryl-admin-wrap">
         <style>
@@ -3208,24 +3185,24 @@ function tryl_admin_page_html() {
             <div class="tryl-admin-layout">
                 <aside class="tryl-admin-sidebar">
                     <nav class="tryl-admin-nav">
-                        <div class="tryl-admin-nav-item"><a href="#tab-general" class="tryl-admin-nav-link active" data-tab="general"><span class="dashicons dashicons-admin-generic"></span> General<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a href="#tab-shop" class="tryl-admin-nav-link" data-tab="shop"><span class="dashicons dashicons-cart"></span> Shop Settings<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a href="#tab-checkout" class="tryl-admin-nav-link" data-tab="checkout"><span class="dashicons dashicons-money-alt"></span> Checkout Flow<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a href="#tab-design" class="tryl-admin-nav-link" data-tab="design"><span class="dashicons dashicons-format-image"></span> Store Design<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a href="#tab-marketing" class="tryl-admin-nav-link" data-tab="marketing"><span class="dashicons dashicons-email-alt"></span> Marketing<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a href="#tab-integrations" class="tryl-admin-nav-link" data-tab="integrations"><span class="dashicons dashicons-rest-api"></span> APIs & Tools<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a href="#tab-communications" class="tryl-admin-nav-link" data-tab="communications"><span class="dashicons dashicons-megaphone"></span> Communications<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a href="#tab-analytics" class="tryl-admin-nav-link" data-tab="analytics"><span class="dashicons dashicons-chart-bar"></span> Analytics & Reports<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a href="#tab-migration" class="tryl-admin-nav-link" data-tab="migration"><span class="dashicons dashicons-database"></span> Data & Migration<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a href="#tab-adminui" class="tryl-admin-nav-link" data-tab="adminui"><span class="dashicons dashicons-art"></span> Dashboard UI<span class="tryl-nav-dot"></span></a></div>
-                        <div class="tryl-admin-nav-item"><a href="#tab-docs" class="tryl-admin-nav-link" data-tab="docs"><span class="dashicons dashicons-welcome-learn-more"></span> Documentation<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="?page=tryl-ecommerce-settings&tab=general" class="tryl-admin-nav-link <?php echo $active_tab === 'general' ? 'active' : ''; ?>" data-tab="general"><span class="dashicons dashicons-admin-generic"></span> General<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="?page=tryl-ecommerce-settings&tab=shop" class="tryl-admin-nav-link <?php echo $active_tab === 'shop' ? 'active' : ''; ?>" data-tab="shop"><span class="dashicons dashicons-cart"></span> Shop Settings<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="?page=tryl-ecommerce-settings&tab=checkout" class="tryl-admin-nav-link <?php echo $active_tab === 'checkout' ? 'active' : ''; ?>" data-tab="checkout"><span class="dashicons dashicons-money-alt"></span> Checkout Flow<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="?page=tryl-ecommerce-settings&tab=design" class="tryl-admin-nav-link <?php echo $active_tab === 'design' ? 'active' : ''; ?>" data-tab="design"><span class="dashicons dashicons-format-image"></span> Store Design<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="?page=tryl-ecommerce-settings&tab=marketing" class="tryl-admin-nav-link <?php echo $active_tab === 'marketing' ? 'active' : ''; ?>" data-tab="marketing"><span class="dashicons dashicons-email-alt"></span> Marketing<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="?page=tryl-ecommerce-settings&tab=integrations" class="tryl-admin-nav-link <?php echo $active_tab === 'integrations' ? 'active' : ''; ?>" data-tab="integrations"><span class="dashicons dashicons-rest-api"></span> APIs & Tools<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="?page=tryl-ecommerce-settings&tab=communications" class="tryl-admin-nav-link <?php echo $active_tab === 'communications' ? 'active' : ''; ?>" data-tab="communications"><span class="dashicons dashicons-megaphone"></span> Communications<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="?page=tryl-ecommerce-settings&tab=analytics" class="tryl-admin-nav-link <?php echo $active_tab === 'analytics' ? 'active' : ''; ?>" data-tab="analytics"><span class="dashicons dashicons-chart-bar"></span> Analytics & Reports<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="?page=tryl-ecommerce-settings&tab=migration" class="tryl-admin-nav-link <?php echo $active_tab === 'migration' ? 'active' : ''; ?>" data-tab="migration"><span class="dashicons dashicons-database"></span> Data & Migration<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="?page=tryl-ecommerce-settings&tab=adminui" class="tryl-admin-nav-link <?php echo $active_tab === 'adminui' ? 'active' : ''; ?>" data-tab="adminui"><span class="dashicons dashicons-art"></span> Dashboard UI<span class="tryl-nav-dot"></span></a></div>
+                        <div class="tryl-admin-nav-item"><a href="?page=tryl-ecommerce-settings&tab=docs" class="tryl-admin-nav-link <?php echo $active_tab === 'docs' ? 'active' : ''; ?>" data-tab="docs"><span class="dashicons dashicons-editor-code"></span> Shortcodes & Docs<span class="tryl-nav-dot"></span></a></div>
                     </nav>
                 </aside>
 
                 <main class="tryl-admin-main">
             
                     <!-- 1. GENERAL TAB -->
-                    <div id="tab-general" class="tryl-tab-content active">
+                    <div id="tab-general" class="tryl-tab-content <?php echo $active_tab === 'general' ? 'active' : ''; ?>">
                         <div class="tryl-admin-card">
                             <h2><span class="dashicons dashicons-admin-settings"></span> System Configuration</h2>
                             <div class="tryl-admin-row">
@@ -3262,7 +3239,18 @@ function tryl_admin_page_html() {
                     </div>
 
                     <!-- 2. DESIGN TAB -->
-                    <div id="tab-design" class="tryl-tab-content">
+                    <div id="tab-design" class="tryl-tab-content <?php echo $active_tab === 'design' ? 'active' : ''; ?>">
+                        <div class="tryl-admin-card">
+                            <h2><span class="dashicons dashicons-layout"></span> Global Layout Engine</h2>
+                            <div class="tryl-admin-row">
+                                <label>Shop & Product Layout Style</label>
+                                <select name="tryl_shop_layout_style">
+                                    <option value="standard" <?php selected(get_option('tryl_shop_layout_style', 'standard'), 'standard'); ?>>Original 3D Interactive (Default)</option>
+                                    <option value="nike" <?php selected(get_option('tryl_shop_layout_style', 'standard'), 'nike'); ?>>Nike-Inspired Clean Editorial</option>
+                                </select>
+                                <p class="description">Switch between the interactive 3D layout and the stark, image-forward Nike aesthetic.</p>
+                            </div>
+                        </div>
                         <div class="tryl-admin-card">
                             <h2><span class="dashicons dashicons-editor-textcolor"></span> Advanced Typography & Lok Font Sync</h2>
                             <div class="tryl-admin-row">
@@ -3348,7 +3336,7 @@ function tryl_admin_page_html() {
                     </div>
 
                     <!-- 3. SHOP TAB -->
-                    <div id="tab-shop" class="tryl-tab-content">
+                    <div id="tab-shop" class="tryl-tab-content <?php echo $active_tab === 'shop' ? 'active' : ''; ?>">
                         <div class="tryl-admin-card">
                             <h2><span class="dashicons dashicons-grid-view"></span> Shop Grid Settings</h2>
                             <div class="tryl-admin-row">
@@ -3374,11 +3362,17 @@ function tryl_admin_page_html() {
                                 <input type="hidden" name="tryl_nav_active" value="0" />
                                 <input type="checkbox" id="tryl_nav_active" class="tryl-toggle" name="tryl_nav_active" value="1" <?php checked(get_option('tryl_nav_active', '1'), '1'); ?> />
                             </div>
+                            <div class="tryl-toggle-wrap">
+                                <label for="tryl_hide_theme_header">Hide Theme Default Header (Divi/SeedProd)</label>
+                                <input type="hidden" name="tryl_hide_theme_header" value="0" />
+                                <input type="checkbox" id="tryl_hide_theme_header" class="tryl-toggle" name="tryl_hide_theme_header" value="1" <?php checked(get_option('tryl_hide_theme_header', '1'), '1'); ?> />
+                            </div>
                             <div class="tryl-admin-row">
                                 <label>Master Shop URL</label>
                                 <input type="text" name="tryl_nav_shop" value="<?php echo esc_attr(get_option('tryl_nav_shop', 'https://therighteousyieldlife.com/the-shop-wip/')); ?>" />
                                 <p class="description">Current Default: <code>https://therighteousyieldlife.com/the-shop-wip/</code></p>
                             </div>
+                            
                             <div class="tryl-admin-row">
                                 <label>Mobile Menu Alignment</label>
                                 <select name="tryl_mobile_menu_align">
@@ -3388,6 +3382,7 @@ function tryl_admin_page_html() {
                                 </select>
                             </div>
                             <div class="tryl-admin-row"><label>Mission Page URL</label><input type="text" name="tryl_nav_mission" value="<?php echo esc_attr(get_option('tryl_nav_mission', home_url('/mission/'))); ?>" /></div>
+                            <div class="tryl-admin-row"><label>About Page URL</label><input type="text" name="tryl_nav_about" value="<?php echo esc_attr(get_option('tryl_nav_about', home_url('/about/'))); ?>" /></div>
                             <div class="tryl-admin-row"><label>Prayer Request Page URL</label><input type="text" name="tryl_nav_prayer" value="<?php echo esc_attr(get_option('tryl_nav_prayer', home_url('/prayer-request/'))); ?>" /></div>
                             <div class="tryl-admin-row"><label>Contact Page URL</label><input type="text" name="tryl_nav_contact" value="<?php echo esc_attr(get_option('tryl_nav_contact', home_url('/contact/'))); ?>" /></div>
                             
@@ -3413,6 +3408,11 @@ function tryl_admin_page_html() {
                                 <label for="tryl_footer_active">Enable Global Footer</label>
                                 <input type="hidden" name="tryl_footer_active" value="0" />
                                 <input type="checkbox" id="tryl_footer_active" class="tryl-toggle" name="tryl_footer_active" value="1" <?php checked(get_option('tryl_footer_active', '1'), '1'); ?> />
+                            </div>
+                            <div class="tryl-toggle-wrap">
+                                <label for="tryl_hide_theme_footer">Hide Theme Default Footer (Divi/SeedProd)</label>
+                                <input type="hidden" name="tryl_hide_theme_footer" value="0" />
+                                <input type="checkbox" id="tryl_hide_theme_footer" class="tryl-toggle" name="tryl_hide_theme_footer" value="1" <?php checked(get_option('tryl_hide_theme_footer', '1'), '1'); ?> />
                             </div>
                             <div class="tryl-admin-row">
                                 <label>Footer Style</label>
@@ -3444,7 +3444,7 @@ function tryl_admin_page_html() {
                     </div>
 
                     <!-- 4. CHECKOUT TAB -->
-                    <div id="tab-checkout" class="tryl-tab-content">
+                    <div id="tab-checkout" class="tryl-tab-content <?php echo $active_tab === 'checkout' ? 'active' : ''; ?>">
                         <div class="tryl-admin-card">
                             <h2>Checkout Visibility Options</h2>
                             <div class="tryl-toggle-wrap">
@@ -3458,6 +3458,17 @@ function tryl_admin_page_html() {
                                 <input type="checkbox" id="tryl_floating_checkout_active" class="tryl-toggle" name="tryl_floating_checkout_active" value="1" <?php checked(get_option('tryl_floating_checkout_active', '1'), '1'); ?> />
                             </div>
                             <p class="description">Turn these off if you prefer a more minimalist navigation experience.</p>
+                        </div>
+                        <div class="tryl-admin-card">
+                            <h2><span class="dashicons dashicons-layout"></span> Checkout Aesthetics</h2>
+                            <div class="tryl-admin-row">
+                                <label>Checkout Layout Style</label>
+                                <select name="tryl_checkout_layout_style">
+                                    <option value="accordion" <?php selected(get_option('tryl_checkout_layout_style', 'accordion'), 'accordion'); ?>>3-Step Accordion (Classic TRYL)</option>
+                                    <option value="snap" <?php selected(get_option('tryl_checkout_layout_style', 'accordion'), 'snap'); ?>>Split Screen (Modern / Snap UI)</option>
+                                </select>
+                                <p class="description">Choose the structural layout and aesthetics of your checkout page.</p>
+                            </div>
                         </div>
                         <div class="tryl-admin-card">
                             <h2>Floating Cart & Mini-Cart</h2>
@@ -3541,7 +3552,7 @@ function tryl_admin_page_html() {
                     </div>
 
                     <!-- 5. MARKETING TAB -->
-                    <div id="tab-marketing" class="tryl-tab-content">
+                    <div id="tab-marketing" class="tryl-tab-content <?php echo $active_tab === 'marketing' ? 'active' : ''; ?>">
                         <div class="tryl-admin-card">
                             <h2>Exit-Intent Popup</h2>
                             <div class="tryl-toggle-wrap">
@@ -3628,7 +3639,7 @@ function tryl_admin_page_html() {
                     </div>
 
                     <!-- 6. INTEGRATIONS TAB -->
-                    <div id="tab-integrations" class="tryl-tab-content">
+                    <div id="tab-integrations" class="tryl-tab-content <?php echo $active_tab === 'integrations' ? 'active' : ''; ?>">
                         <div class="tryl-admin-card">
                             <h2>Prayer Request Settings</h2>
                             <div class="tryl-admin-row"><label>Notification Receiver Email</label><input type="email" name="tryl_prayer_email" value="<?php echo esc_attr(get_option('tryl_prayer_email', get_option('admin_email'))); ?>" /></div>
@@ -3636,7 +3647,7 @@ function tryl_admin_page_html() {
                         </div>
 <div class="tryl-admin-card">
     <h2>Technical Infrastructure</h2>
-    <div class="tryl-admin-row"><label>Printful API Token</label><input type="text" name="tryl_printful_token" value="<?php echo esc_attr(get_option('tryl_printful_token')); ?>" /></div>
+    <div class="tryl-admin-row"><label>Printful API Token</label><input type="text" name="tryl_printful_token" value="<?php echo esc_attr(get_option('tryl_printful_token', 'm2yTsr2RmxtNoAu1jpptSPlpvVvX0Ve3O5mqVsa3')); ?>" /></div>
 </div>
 
 <div class="tryl-admin-card">
@@ -3674,6 +3685,18 @@ function tryl_admin_page_html() {
         <input type="checkbox" id="tryl_printful_mockup_sync" class="tryl-toggle" name="tryl_printful_mockup_sync" value="1" <?php checked(get_option('tryl_printful_mockup_sync'), '1'); ?> />
     </div>
     <p class="description">When enabled, the system will generate and attach Printful mockups to WooCommerce products during sync.</p>
+    <div class="tryl-toggle-wrap">
+        <label for="tryl_printful_dynamic_desc">Enhance Product Descriptions (Material Parsing)</label>
+        <input type="hidden" name="tryl_printful_dynamic_desc" value="0" />
+        <input type="checkbox" id="tryl_printful_dynamic_desc" class="tryl-toggle" name="tryl_printful_dynamic_desc" value="1" <?php checked(get_option('tryl_printful_dynamic_desc'), '1'); ?> />
+    </div>
+    <p class="description">Automatically parses Printful's raw text to extract materials and formats them into a premium HTML specifications list.</p>
+    <div class="tryl-toggle-wrap">
+        <label for="tryl_printful_size_guide_sync">Auto-Fetch Printful Size Charts</label>
+        <input type="hidden" name="tryl_printful_size_guide_sync" value="0" />
+        <input type="checkbox" id="tryl_printful_size_guide_sync" class="tryl-toggle" name="tryl_printful_size_guide_sync" value="1" <?php checked(get_option('tryl_printful_size_guide_sync'), '1'); ?> />
+    </div>
+    <p class="description">Automatically queries the Printful Catalog API to generate an accurate sizing and fit HTML table for each product. Appends natively to WooCommerce tabs and exposes the <code>[tryl_size_chart]</code> shortcode.</p>
     
     <div class="tryl-admin-row" style="margin-top:16px;">
         <label>Mockup Generation Engine</label>
@@ -3703,12 +3726,13 @@ function tryl_admin_page_html() {
     </div>
     <div class="tryl-admin-row">
         <label>Order Routing Rules</label>
-        <select name="tryl_printful_routing_rules" multiple size="4" style="width: 100%; height: 150px;">
-            <option value="all" <?php selected(get_option('tryl_printful_routing_rules', 'all'), 'all'); ?>>Send all orders to Printful</option>
-            <option value="printful_only" <?php selected(get_option('tryl_printful_routing_rules', 'all'), 'printful_only'); ?>>Only Printful products</option>
-            <option value="shipping_us" <?php selected(get_option('tryl_printful_routing_rules', 'all'), 'shipping_us'); ?>>US shipping addresses only</option>
-            <option value="priority_shipping" <?php selected(get_option('tryl_printful_routing_rules', 'all'), 'priority_shipping'); ?>>Priority/Express shipping only</option>
-            <option value="high_value" <?php selected(get_option('tryl_printful_routing_rules', 'all'), 'high_value'); ?>>Orders over $100</option>
+        <select name="tryl_printful_routing_rules[]" multiple size="4" style="width: 100%; height: 150px;">
+            <?php $current_rules = get_option('tryl_printful_routing_rules', ['all']); if(!is_array($current_rules)) $current_rules = [$current_rules]; ?>
+            <option value="all" <?php echo in_array('all', $current_rules) ? 'selected' : ''; ?>>Send all orders to Printful</option>
+            <option value="printful_only" <?php echo in_array('printful_only', $current_rules) ? 'selected' : ''; ?>>Only Printful products</option>
+            <option value="shipping_us" <?php echo in_array('shipping_us', $current_rules) ? 'selected' : ''; ?>>US shipping addresses only</option>
+            <option value="priority_shipping" <?php echo in_array('priority_shipping', $current_rules) ? 'selected' : ''; ?>>Priority/Express shipping only</option>
+            <option value="high_value" <?php echo in_array('high_value', $current_rules) ? 'selected' : ''; ?>>Orders over $100</option>
         </select>
         <p class="description">Hold Ctrl (Cmd on Mac) to select multiple rules. Orders matching ANY selected rule will be sent to Printful.</p>
     </div>
@@ -3775,7 +3799,7 @@ function tryl_admin_page_html() {
                     </div>
 
 <!-- 7. COMMUNICATIONS TAB -->
-<div id="tab-communications" class="tryl-tab-content">
+<div id="tab-communications" class="tryl-tab-content <?php echo $active_tab === 'communications' ? 'active' : ''; ?>">
     <div class="tryl-admin-card" style="background: #e8f0e8; border-color: #31d190;">
         <h2 style="color: #0d1b0f;"><span class="dashicons dashicons-megaphone" style="color: #31d190;"></span> Setup Tutorial: Meta WhatsApp API</h2>
         <ol style="color: #1a2e1a; line-height: 1.6; padding-left: 20px; font-weight: 500;">
@@ -3857,7 +3881,7 @@ function tryl_admin_page_html() {
 </div>
 
 <!-- 8. ANALYTICS & REPORTS TAB -->
-<div id="tab-analytics" class="tryl-tab-content">
+<div id="tab-analytics" class="tryl-tab-content <?php echo $active_tab === 'analytics' ? 'active' : ''; ?>">
     <div class="tryl-admin-card">
         <h2><span class="dashicons dashicons-chart-area"></span> Printful Sync Health</h2>
         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 24px;">
@@ -3911,7 +3935,7 @@ function tryl_admin_page_html() {
 </div>
 
 <!-- 9. DATA & MIGRATION TAB -->
-<div id="tab-migration" class="tryl-tab-content">
+<div id="tab-migration" class="tryl-tab-content <?php echo $active_tab === 'migration' ? 'active' : ''; ?>">
     <div class="tryl-admin-card">
         <h2><span class="dashicons dashicons-update-alt"></span> Bulk Operations & Sync</h2>
         <p class="description" style="margin-top:-20px; margin-bottom:24px;">Force synchronization across your entire catalog.</p>
@@ -3931,7 +3955,7 @@ function tryl_admin_page_html() {
 </div>
 
 <!-- 10. DASHBOARD UI CUSTOMIZATION TAB -->
-<div id="tab-adminui" class="tryl-tab-content">
+<div id="tab-adminui" class="tryl-tab-content <?php echo $active_tab === 'adminui' ? 'active' : ''; ?>">
     <div class="tryl-admin-card">
         <h2><span class="dashicons dashicons-art"></span> Live Dashboard Customization</h2>
         <p class="description" style="margin-top:-20px; margin-bottom:24px;">Personalize the colors of this entire TRYL settings dashboard. Use the color pickers below to change the interface instantly!</p>
@@ -3957,9 +3981,9 @@ function tryl_admin_page_html() {
 </div>
 
 <!-- 11. DOCUMENTATION TAB -->
-<div id="tab-docs" class="tryl-tab-content">
+<div id="tab-docs" class="tryl-tab-content <?php echo $active_tab === 'docs' ? 'active' : ''; ?>">
     <div class="tryl-admin-card">
-        <h2>Merchant Support Hub</h2>
+        <h2>Shortcodes & Integration Hub</h2>
         <button id="tryl-download-pdf" class="button button-secondary" style="margin: 10px 0 20px;" type="button">Download Documentation as PDF</button>
         <div class="tryl-guide-grid">
             <?php tryl_documentation_tab_content(); ?>
@@ -3973,160 +3997,6 @@ function tryl_admin_page_html() {
                 <button type="submit" class="tryl-admin-save-btn"><span class="dashicons dashicons-saved" style="margin-top: 2px;"></span> Save TRYL Settings</button>
             </div>
         </form>
-
-<script>
-    (function() {
-        const navLinks = document.querySelectorAll('.tryl-admin-nav-link');
-        const tabs = document.querySelectorAll('.tryl-tab-content');
-        
-        // Unseen Dot Tracking Logic (Bump the version string if you want to force reset everyone's dots)
-        const visitedTabsKey = 'tryl_visited_tabs_v350';
-        let visitedTabs = [];
-        try {
-            visitedTabs = JSON.parse(localStorage.getItem(visitedTabsKey)) || [];
-        } catch(e) {}
-
-        function markTabVisited(tabId) {
-            if (!visitedTabs.includes(tabId)) {
-                visitedTabs.push(tabId);
-                try {
-                    localStorage.setItem(visitedTabsKey, JSON.stringify(visitedTabs));
-                } catch(e) {}
-            }
-            const link = document.querySelector(`.tryl-admin-nav-link[data-tab="${tabId}"]`);
-            if (link) {
-                const dot = link.querySelector('.tryl-nav-dot');
-                if (dot) dot.classList.remove('unseen');
-            }
-        }
-
-        function switchTab(targetTab) {
-            markTabVisited(targetTab);
-            
-            // Update Nav
-            navLinks.forEach(l => {
-                l.classList.remove('active');
-                if (l.getAttribute('data-tab') === targetTab) l.classList.add('active');
-            });
-        
-            // Update Tabs
-            tabs.forEach(tab => {
-                tab.classList.remove('active');
-                if (tab.id === 'tab-' + targetTab) {
-                    tab.classList.add('active');
-                }
-            });
-        
-            // Visual feedback with GSAP if available
-            if (window.gsap) {
-                gsap.fromTo('#tab-' + targetTab, { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out' });
-            }
-        }
-        
-        navLinks.forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                const targetTab = this.getAttribute('data-tab');
-                switchTab(targetTab);
-            });
-        });
-        
-        // Initialize dots on load
-        navLinks.forEach(link => {
-            const tabId = link.getAttribute('data-tab');
-            if (!visitedTabs.includes(tabId)) {
-                const dot = link.querySelector('.tryl-nav-dot');
-                if (dot) dot.classList.add('unseen');
-            }
-        });
-
-        // Handle direct tab access via URL parameter
-        const urlParams = new URLSearchParams(window.location.search);
-        const initialTab = urlParams.get('tab');
-        if (initialTab) {
-            switchTab(initialTab);
-        }
-        
-        // Handle PDF download button
-        const pdfButton = document.getElementById('tryl-download-pdf');
-        if (pdfButton) {
-            pdfButton.addEventListener('click', function() {
-                window.print();
-            });
-        }
-        
-        // Handle Purge Test Orders
-        const purgeBtn = document.getElementById('tryl_purge_test_orders');
-        if (purgeBtn) {
-            purgeBtn.addEventListener('click', function() {
-                if (!confirm('Are you sure you want to permanently delete all WooCommerce test orders? This action cannot be undone.')) return;
-                const ogText = this.textContent;
-                this.textContent = 'Purging...';
-                this.style.opacity = '0.5';
-                
-                const fd = new FormData();
-                fd.append('action', 'tryl_purge_test_orders');
-                fd.append('security', '<?php echo wp_create_nonce("tryl_admin_actions"); ?>');
-                
-                fetch('<?php echo admin_url("admin-ajax.php"); ?>', { method: 'POST', body: fd })
-                .then(r => r.json())
-                .then(res => {
-                    alert(res.data.message || 'Purge complete.');
-                    window.location.reload();
-                }).catch(e => {
-                    alert('Error purging orders.');
-                    this.textContent = ogText;
-                    this.style.opacity = '1';
-                });
-            });
-        }
-        
-        // Handle Force Sync
-        const forceSyncBtn = document.getElementById('tryl_force_full_sync');
-        if (forceSyncBtn) {
-            forceSyncBtn.addEventListener('click', function() {
-                const ogText = this.innerHTML;
-                this.innerHTML = '<span class="dashicons dashicons-update-alt" style="margin-top:2px;"></span> Syncing...';
-                this.style.opacity = '0.5';
-                this.style.pointerEvents = 'none';
-                
-                const fd = new FormData();
-                fd.append('action', 'tryl_force_full_sync');
-                fd.append('security', '<?php echo wp_create_nonce("tryl_admin_actions"); ?>');
-                
-                fetch('<?php echo admin_url("admin-ajax.php"); ?>', { method: 'POST', body: fd })
-                .then(r => r.json())
-                .then(res => {
-                    alert(res.data.message || 'Sync complete.');
-                    this.innerHTML = ogText;
-                    this.style.opacity = '1';
-                    this.style.pointerEvents = 'auto';
-                }).catch(e => {
-                    alert('Error running sync.');
-                    this.innerHTML = ogText;
-                    this.style.opacity = '1';
-                    this.style.pointerEvents = 'auto';
-                });
-            });
-        }
-        
-        // Handle DB Cleanup
-        const cleanupBtn = document.getElementById('tryl_cleanup_db');
-        if (cleanupBtn) {
-            cleanupBtn.addEventListener('click', function() {
-                if (!confirm('This will permanently delete metadata for products that no longer exist. Proceed?')) return;
-                const fd = new FormData();
-                fd.append('action', 'tryl_cleanup_db');
-                fd.append('security', '<?php echo wp_create_nonce("tryl_admin_actions"); ?>');
-                
-                fetch('<?php echo admin_url("admin-ajax.php"); ?>', { method: 'POST', body: fd })
-                .then(r => r.json())
-                .then(res => alert(res.data.message || 'Cleanup complete.'))
-                .catch(e => alert('Error running cleanup.'));
-            });
-        }
-    })();
-</script>
     </div>
     <?php
 }
@@ -4165,6 +4035,17 @@ function tryl_display_checkout_features_admin( $order ) {
         if ( $eco ) echo '<p><strong>Eco-Friendly Packaging:</strong> ' . esc_html( $eco ) . '</p>';
         if ( $gift ) echo '<p><strong>Gift Wrapping:</strong> ' . esc_html( $gift ) . '</p>';
     }
+}
+
+// 4. Stripe Apple Pay / Google Pay Button Styling
+add_filter( 'wc_stripe_payment_request_settings', 'tryl_customize_stripe_express_button' );
+function tryl_customize_stripe_express_button( $settings ) {
+    if ( isset( $settings['button'] ) ) {
+        $settings['button']['theme']  = 'dark'; // Forces the sleek black Apple Pay / Google Pay button
+        $settings['button']['type']   = 'buy';  // Shows "Buy with..." instead of default
+        $settings['button']['height'] = '54';   // Matches our custom input height perfectly
+    }
+    return $settings;
 }
 
 /**
@@ -4304,7 +4185,7 @@ add_filter( 'wc_add_to_cart_message_html', 'tryl_custom_add_to_cart_message', 10
 // ─── PRINTFUL INTEGRATION ───
 if ( ! function_exists( 'tryl_printful_api_request' ) ) {
 function tryl_printful_api_request( $endpoint, $method = 'GET', $data = null ) {
-    $api_token = get_option( 'tryl_printful_token' );
+    $api_token = get_option( 'tryl_printful_token', 'm2yTsr2RmxtNoAu1jpptSPlpvVvX0Ve3O5mqVsa3' );
     if ( empty( $api_token ) ) {
         return new WP_Error( 'no_token', 'Printful API token not configured.' );
     }
@@ -4395,6 +4276,11 @@ function tryl_printful_sync_products() {
             // Handle mockup images via Sideloading Pipeline
             if ( get_option( 'tryl_printful_mockup_sync' ) === '1' ) {
                 tryl_process_product_mockups( $post_id );
+            }
+            
+            // Handle Size Guide Sideloading
+            if ( get_option( 'tryl_printful_size_guide_sync' ) === '1' ) {
+                tryl_sync_product_size_guide( $post_id, $product['id'] );
             }
             
             // Handle variants
@@ -4491,20 +4377,50 @@ function tryl_process_product_mockups( $post_id ) {
             }
             
             if ( $raw_design_url ) {
-                // This is where Printful's Mockup Generator API (or an external AI like Vmake) executes.
-                // For now, we simulate a robust attempt, and trigger the Valve fallback to guarantee a working image.
                 $generated_ai_url = false; 
+                    
+                    $catalog_product_id = isset($variant['product_id']) ? $variant['product_id'] : '';
+                    $catalog_variant_id = isset($variant['variant_id']) ? $variant['variant_id'] : '';
+                    
+                    if ( $catalog_product_id && $catalog_variant_id ) {
+                        $task_payload = [
+                            'variant_ids' => [ $catalog_variant_id ],
+                            'format' => 'jpg',
+                            'files' => [ [ 'placement' => 'front', 'image_url' => $raw_design_url ] ]
+                        ];
+                        
+                        $task_req = tryl_printful_api_request("mockup-generator/create-task/{$catalog_product_id}", 'POST', $task_payload);
+                        
+                        if ( ! is_wp_error($task_req) && isset($task_req['task_key']) ) {
+                            $task_key = $task_req['task_key'];
+                            // Poll for completion (up to 10 times, 3 seconds apart) for complex 3D AI renders
+                            for ($i = 0; $i < 10; $i++) {
+                                sleep(3);
+                                $status_req = tryl_printful_api_request("mockup-generator/task?task_key={$task_key}");
+                                if ( ! is_wp_error($status_req) && isset($status_req['status']) && $status_req['status'] === 'completed' ) {
+                                    if ( ! empty($status_req['mockups'][0]['extra_mockups'][0]['url']) ) {
+                                        $generated_ai_url = $status_req['mockups'][0]['extra_mockups'][0]['url'];
+                                    } elseif ( ! empty($status_req['mockups'][0]['mockup_url']) ) {
+                                        $generated_ai_url = $status_req['mockups'][0]['mockup_url'];
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 
                 if ( $generated_ai_url && ! is_wp_error( $generated_ai_url ) ) {
                     $desc = get_the_title( $post_id ) . ' Premium 3D Mockup';
                     $attachment_id = media_sideload_image( $generated_ai_url, $post_id, $desc, 'id' );
                     if ( ! is_wp_error( $attachment_id ) ) {
                         $attachment_ids[] = $attachment_id;
-                        continue; // Success! Skip the standard fallback for this variant
+                    } else {
+                        $ai_failed = true;
                     }
+                } else {
+                    // The AI/3D failed or isn't ready. Triggering the Smart Valve.
+                    $ai_failed = true;
                 }
-                // The AI/3D failed or isn't ready. Triggering the Smart Valve.
-                $ai_failed = true;
             }
         }
         
@@ -4550,9 +4466,20 @@ function tryl_register_mockup_bulk_action( $bulk_actions ) {
 add_filter( 'handle_bulk_actions-edit-product', 'tryl_handle_mockup_bulk_action', 10, 3 );
 function tryl_handle_mockup_bulk_action( $redirect_to, $doaction, $post_ids ) {
     if ( $doaction !== 'tryl_generate_mockups' ) return $redirect_to;
+    
+    // Prevent PHP timeouts when generating dozens of 3D mockups
+    if ( function_exists( 'set_time_limit' ) ) {
+        set_time_limit( 0 );
+    }
+
     $synced = 0;
     foreach ( $post_ids as $post_id ) {
         if ( tryl_process_product_mockups( $post_id ) ) $synced++;
+        // Also bulk sync size guides if enabled
+        if ( get_option( 'tryl_printful_size_guide_sync' ) === '1' ) {
+            $pf_id = get_post_meta( $post_id, '_tryl_printful_product_id', true );
+            if ( $pf_id ) tryl_sync_product_size_guide( $post_id, $pf_id );
+        }
     }
     return add_query_arg( 'tryl_mockups_generated', $synced, $redirect_to );
 }
@@ -4592,6 +4519,56 @@ function tryl_render_printful_sync_column( $column, $post_id ) {
             echo '<span style="color:#a7aaad; font-family:\'Inter\', sans-serif;">—</span>'; 
         }
     }
+}
+
+// ─── PRINTFUL SIZE GUIDE API PARSER ───
+if ( ! function_exists( 'tryl_sync_product_size_guide' ) ) {
+function tryl_sync_product_size_guide( $post_id, $printful_product_id ) {
+    // First fetch the full product payload to retrieve the global catalog ID
+    $pf_product = tryl_printful_api_request( "store/products/{$printful_product_id}" );
+    if ( is_wp_error( $pf_product ) || empty( $pf_product['sync_variants'] ) ) return false;
+    
+    $catalog_product_id = $pf_product['sync_variants'][0]['product_id'] ?? 0;
+    if ( ! $catalog_product_id ) return false;
+
+    // Ping the Catalog API to fetch dimensions
+    $sizes = tryl_printful_api_request( "products/{$catalog_product_id}/sizes" );
+    if ( is_wp_error( $sizes ) || empty( $sizes['size_tables'] ) ) return false;
+
+    ob_start();
+    echo '<div class="tryl-size-chart-wrapper">';
+    foreach ( $sizes['size_tables'] as $table ) {
+        $title = isset($table['type']) ? ucfirst($table['type']) : 'Size Guide';
+        $unit = !empty($table['unit']) ? ' (' . $table['unit'] . ')' : '';
+        echo '<h4 class="tryl-size-chart-title">' . esc_html( $title . $unit ) . '</h4>';
+        
+        if ( !empty($table['measurements']) ) {
+            echo '<div class="tryl-size-chart-table-wrap"><table class="tryl-size-chart-table">';
+            $sizes_header = [];
+            foreach ( $table['measurements'][0]['values'] as $val ) {
+                $sizes_header[] = $val['size'];
+            }
+            echo '<thead><tr><th>Measurement</th>';
+            foreach ( $sizes_header as $s ) {
+                echo '<th>' . esc_html( $s ) . '</th>';
+            }
+            echo '</tr></thead><tbody>';
+            
+            foreach ( $table['measurements'] as $row ) {
+                echo '<tr><td><strong>' . esc_html( $row['type_label'] ) . '</strong></td>';
+                foreach ( $row['values'] as $val ) {
+                    echo '<td>' . esc_html( $val['value'] ) . '</td>';
+                }
+                echo '</tr>';
+            }
+            echo '</tbody></table></div>';
+        }
+    }
+    echo '</div>';
+    
+    update_post_meta( $post_id, '_tryl_size_chart_html', ob_get_clean() );
+    return true;
+}
 }
 
 if ( ! function_exists( 'tryl_printful_sync_inventory' ) ) {
@@ -4658,7 +4635,7 @@ if ( ! function_exists( 'tryl_printful_webhook_handler' ) ) {
 function tryl_printful_webhook_handler() {
     // Check if this is a Printful webhook
     $signature = isset( $_SERVER['HTTP_X_PRINTFUL_SIGNATURE'] ) ? $_SERVER['HTTP_X_PRINTFUL_SIGNATURE'] : '';
-    $token = get_option( 'tryl_printful_token' );
+    $token = get_option( 'tryl_printful_token', 'm2yTsr2RmxtNoAu1jpptSPlpvVvX0Ve3O5mqVsa3' );
     
     if ( empty( $signature ) || empty( $token ) ) {
         status_header( 401 );
@@ -4755,6 +4732,11 @@ add_action( 'wp', 'tryl_schedule_printful_sync' );
 
 if ( ! function_exists( 'tryl_printful_sync_hook_callback' ) ) {
 function tryl_printful_sync_hook_callback() {
+    // Prevent timeouts during heavy background catalog syncs
+    if ( function_exists( 'set_time_limit' ) ) {
+        set_time_limit( 0 );
+    }
+
     if ( get_option( 'tryl_printful_sync_enabled' ) === '1' ) {
         tryl_printful_sync_products();
         
@@ -4875,6 +4857,7 @@ function tryl_force_full_sync_handler() {
         if ( get_option('tryl_printful_inventory_sync') === '1' ) {
             tryl_printful_sync_inventory();
         }
+        delete_transient( 'tryl_lokconnect_stats_cache' );
         wp_send_json_success(['message' => 'Full Printful sync triggered successfully!']);
     } else {
         wp_send_json_error(['message' => 'Sync functions not found.']);
@@ -4979,9 +4962,12 @@ function tryl_extension_font_receptor( WP_REST_Request $request ) {
 if ( ! function_exists( 'tryl_printful_should_route_order' ) ) {
 function tryl_printful_should_route_order( $order ) {
     // Get routing rules
-    $rules = get_option( 'tryl_printful_routing_rules', 'all' );
+    $rules = get_option( 'tryl_printful_routing_rules', array( 'all' ) );
     if ( empty( $rules ) ) {
         $rules = array( 'all' );
+    }
+    if ( ! is_array( $rules ) ) {
+        $rules = array( $rules );
     }
     
     // If 'all' is selected, route everything
@@ -5162,7 +5148,7 @@ if ( ! function_exists( 'tryl_printful_order_status_webhook' ) ) {
 function tryl_printful_order_status_webhook() {
     // Verify webhook signature
     $signature = isset( $_SERVER['HTTP_X_PRINTFUL_SIGNATURE'] ) ? $_SERVER['HTTP_X_PRINTFUL_SIGNATURE'] : '';
-    $token = get_option( 'tryl_printful_token' );
+    $token = get_option( 'tryl_printful_token', 'm2yTsr2RmxtNoAu1jpptSPlpvVvX0Ve3O5mqVsa3' );
     
     if ( empty( $signature ) || empty( $token ) ) {
         status_header( 401 );
@@ -5389,6 +5375,7 @@ add_action( 'woocommerce_process_shop_order_meta', 'tryl_printful_route_order_on
 add_action('woocommerce_shipping_init', 'tryl_printful_shipping_init');
 function tryl_printful_shipping_init() {
     if ( ! class_exists( 'WC_Shipping_Method' ) ) return;
+    if ( class_exists( 'TRYL_Printful_Shipping_Method' ) ) return;
 
     class TRYL_Printful_Shipping_Method extends WC_Shipping_Method {
         public function __construct( $instance_id = 0 ) {
@@ -5430,7 +5417,7 @@ function tryl_printful_shipping_init() {
         public function calculate_shipping( $package = array() ) {
             if ( get_option('tryl_printful_live_shipping') !== '1' ) return;
 
-            $api_token = get_option( 'tryl_printful_token' );
+            $api_token = get_option( 'tryl_printful_token', 'm2yTsr2RmxtNoAu1jpptSPlpvVvX0Ve3O5mqVsa3' );
             if ( empty( $api_token ) ) return;
 
             $dest = $package['destination'];
@@ -5574,6 +5561,31 @@ function tryl_send_tracking_email( $order, $tracking ) {
     $mailer->send($email, $subject, $content);
     return true;
 }
+
+// ─── WOOCOMMERCE TAB INJECTION (SEEDPROD / DIVI FALLBACK) ───
+add_filter( 'woocommerce_product_tabs', 'tryl_add_size_chart_tab' );
+function tryl_add_size_chart_tab( $tabs ) {
+    global $post;
+    if ( ! $post || ! is_object( $post ) ) return $tabs;
+    $chart = get_post_meta( $post->ID, '_tryl_size_chart_html', true );
+    if ( $chart ) {
+        $tabs['tryl_size_chart'] = array(
+            'title'     => __( 'Size Guide', 'tryl-ecommerce-core' ),
+            'priority'  => 25,
+            'callback'  => 'tryl_size_chart_tab_content'
+        );
+    }
+    return $tabs;
+}
+function tryl_size_chart_tab_content() {
+    global $post;
+    echo get_post_meta( $post->ID, '_tryl_size_chart_html', true );
+}
+add_shortcode( 'tryl_size_chart', function($atts) {
+    global $post;
+    $post_id = isset($atts['id']) ? intval($atts['id']) : ($post ? $post->ID : 0);
+    return $post_id ? get_post_meta( $post_id, '_tryl_size_chart_html', true ) : '';
+} );
 
 // ─── 18. LOKBRIDGE OTA UPDATER ───────────────────────────────────────────────
 class TRYL_LokBridge_Updater {

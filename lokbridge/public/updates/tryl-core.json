@@ -1,12 +1,12 @@
 {
     "name": "TRYL Premium E-Commerce Core",
     "slug": "tryl-ecommerce-core",
-    "version": "3.18",
+    "version": "3.19",
     "author": "EHDesigns / LokServices",
-    "download_url": "http://localhost:4000/updates/tryl-ecommerce-core-3.18.zip",
+    "download_url": "http://localhost:4000/updates/tryl-ecommerce-core-3.19.zip",
     "requires": "6.0",
     "tested": "6.5",
-    "last_updated": "2026-05-18 15:50:47",
+    "last_updated": "2026-05-18 18:57:33",
     "sections": {
         "description": "Premium TRYL core engine handling custom cart, checkout, and global UI.",
         "changelog": "<ul><li>Automated OTA deployment via LokBridge.</li></ul>"

@@ -12,6 +12,7 @@ MANIFEST = {
     "plugins/tryl-ecommerce-core/templates/checkout/form-checkout.php": "tryl-ecommerce-core/templates/checkout/form-checkout.php",
     "plugins/tryl-ecommerce-core/templates/checkout/thankyou.php": "tryl-ecommerce-core/templates/checkout/thankyou.php",
     "plugins/tryl-ecommerce-core/templates/page-righteous-shop.php": "tryl-ecommerce-core/templates/page-righteous-shop.php",
+    "plugins/tryl-ecommerce-core/templates/404.php": "tryl-ecommerce-core/templates/404.php",
     "plugins/tryl-ecommerce-core/assets/css/tryl-core.css": "tryl-ecommerce-core/assets/css/tryl-core.css",
     "plugins/tryl-ecommerce-core/assets/js/tryl-core.js": "tryl-ecommerce-core/assets/js/tryl-core.js",
     "plugins/tryl-editorial-skin/tryl-editorial-skin.php": "tryl-editorial-skin/tryl-editorial-skin.php",

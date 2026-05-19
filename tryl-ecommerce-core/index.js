@@ -105,3 +105,23 @@ registerBlockType('tryl/order-tracker-block', {
     },
     save: function () { return null; } // Must return null for PHP Server-Side blocks
 });
+
+// Register the TRYL Complete The Look Block
+registerBlockType('tryl/complete-look-block', {
+    apiVersion: 2,
+    title: 'TRYL Complete The Look',
+    icon: 'cart',
+    category: 'widgets',
+    description: 'Displays dynamic cross-sell products on single product pages.',
+    
+    edit: function (props) {
+        const blockProps = useBlockProps();
+        return (
+            <div {...blockProps} style={{ border: '2px dashed #0d1b0f', padding: '10px' }}>
+                <div style={{ background: '#0d1b0f', color: '#fff', padding: '4px 8px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'inline-block', margin: '0 0 8px 0' }}>Live Preview: Complete The Look</div>
+                <ServerSideRender block="tryl/complete-look-block" attributes={props.attributes} />
+            </div>
+        );
+    },
+    save: function () { return null; }
+});

@@ -2,6 +2,15 @@ C:\Users\glory\.gemini\antigravity\scratch\tryl-ecommerce-core\tryl-ecommerce-co
 
 All notable changes to the TRYL Premium E-Commerce Core will be documented here.
 
+## [3.20.0] - The Snap UI & Core Stability Update
+
+### Added / Optimized
+- **Modern Snap UI Checkout:** Integrated a beautiful, 2-column minimalist checkout design from Google AI Studio / Stitch. Includes dynamic Apple Pay / Google Pay Express Checkout wrappers.
+- **Dual-Engine Checkout Layouts:** Added a dashboard setting to seamlessly toggle between the Classic 3-Step Accordion and the new Split-Screen Snap UI layout.
+- **Smart Asset Teleporter:** Bypassed SeedProd/Divi shortcode constraints. Shortcodes now safely teleport their inline CSS/GSAP scripts directly to the `wp_footer`, preventing page builders from mangling or stripping the assets.
+- **Defensive Programming Upgrade:** Hardened the entire ecosystem against PHP 8+ Fatal TypeErrors by injecting strict `is_array()` checks prior to `in_array()` evaluations.
+- **Printful Material Parsing:** The backend catalog sync now intelligently rips raw Printful bullet points and transforms them into a premium HTML "Materials & Specifications" accordion.
+
 ## [3.19.0]
 
 ### Added
